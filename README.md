@@ -1,0 +1,1 @@
+# org.openhab.binding.xiaomigateway
