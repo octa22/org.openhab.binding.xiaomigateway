@@ -84,7 +84,7 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
      * the refresh interval which is used to poll values from the XiaomiGateway
      * server (optional, defaults to 60000ms)
      */
-    private long refreshInterval = 0;
+    private long refreshInterval = -1;
 
 
     public XiaomiGatewayBinding() {
