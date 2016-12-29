@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<binding:binding id="xiaomigateway"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xmlns:binding="http://eclipse.org/smarthome/schemas/binding/v1.0.0"
+        xsi:schemaLocation="http://eclipse.org/smarthome/schemas/binding/v1.0.0 http://eclipse.org/smarthome/schemas/binding-1.0.0.xsd">
+
+    <name>Xiaomi Gateway Binding</name>
+    <description>Control devices bound to Xiaomi Smart Home Gateway.</description>
+    <author>Ondrej Pecta</author>
+    
+    <service-id>org.openhab.xiaomigateway</service-id>
+    <config-description>
+        <parameter name="key" type="text" required="true">
+            <label>A developer key obtained in the Mi Home Android application when developer mode enabled.</label>
+        </parameter>
+    </config-description>
+
+
+</binding:binding>

@@ -48,6 +48,9 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
 
     private Thread thread;
 
+    //Configuration
+    private String key = "";
+
     //Gateway info
     private String sid = "";
     private String token = "";
@@ -109,6 +112,10 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
         String refreshIntervalString = (String) configuration.get("refresh");
         if (StringUtils.isNotBlank(refreshIntervalString)) {
             refreshInterval = Long.parseLong(refreshIntervalString);
+        }
+        String keyString = (String) configuration.get("key");
+        if (StringUtils.isNotBlank(refreshIntervalString)) {
+            key = keyString;
         }
 
         // read further config parameters here ...
@@ -436,6 +443,54 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
             e.printStackTrace();
         }
     }
+
+    private void requestWrite(String device, String[] keys, Object[] values) {
+        try {
+            String sendString = "{\"cmd\": \"write\", \"sid\": \"" + device + "\", \"data\": {" + getData(keys, values) + ", \"key\": " + getKey() + "}}";
+            byte[] sendData = sendString.getBytes("UTF-8");
+            InetAddress addr = InetAddress.getByName(gatewayIP);
+            DatagramPacket sendPacket = new DatagramPacket(sendData, sendData.length, addr, dest_port);
+
+            socket.send(sendPacket);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private String getData(String[] keys, Object[] values) {
+        StringBuilder builder = new StringBuilder();
+        boolean first = true;
+
+        if (keys.length != values.length)
+            return "";
+
+        for (int i = 0; i < keys.length; i++) {
+            String k = keys[i];
+            if (!first)
+                builder.append(",");
+            else
+                first = false;
+
+            //write key
+            builder.append("\"").append(k).append("\"").append(": ");
+
+            //write value
+            builder.append(getValue(values[i]));
+        }
+        return toString().toString();
+    }
+
+    private String getKey() {
+        return EncryptionHelper.encrypt(token, key);
+    }
+
+    private String getValue(Object o) {
+        if (o instanceof String) {
+            return "\"" + o + "\"";
+        } else
+            return o.toString();
+    }
+
 
     /**
      * @{inheritDoc}
