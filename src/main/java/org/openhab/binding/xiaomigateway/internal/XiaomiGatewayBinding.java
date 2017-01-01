@@ -164,7 +164,7 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
                 String sentence = new String(dgram.getData(), 0,
                         dgram.getLength());
 
-                logger.debug("Xiaomi received packet: " + sentence);
+                logger.info("Xiaomi received packet: " + sentence);
 
                 JsonObject jobject = parser.parse(sentence).getAsJsonObject();
                 String command = jobject.get("cmd").getAsString();
@@ -189,7 +189,6 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
                     continue;
                 }
 
-                logger.info("Xiaomi received: " + sentence);
                 //report and non gateway heartbeat
                 processOtherCommands(jobject);
             }
@@ -243,7 +242,6 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
     }
 
     private void getGatewayInfo(JsonObject jobject) {
-        //Xiaomi received packet: {"cmd":"iam","port":"9898","sid":"f0b4299a54e4","model":"gateway","ip":"192.168.2.187"}
         sid = jobject.get("sid").getAsString();
         dest_port = jobject.get("port").getAsInt();
         gatewayIP = jobject.get("ip").getAsString();
@@ -413,9 +411,6 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
     protected void execute() {
         // the frequently executed code (polling) goes here ...
         // logger.debug("execute() method is called!");
-
-
-        //requestIdList();
     }
 
     private void requestIdList() {
@@ -450,12 +445,28 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
             byte[] sendData = sendString.getBytes("UTF-8");
             InetAddress addr = InetAddress.getByName(gatewayIP);
             DatagramPacket sendPacket = new DatagramPacket(sendData, sendData.length, addr, dest_port);
-
+            logger.info("Sending to device: " + device + " message: " + sendString );
             socket.send(sendPacket);
         } catch (IOException e) {
             e.printStackTrace();
         }
     }
+
+    /*
+    private void requestWriteGateway(String device, String[] keys, Object[] values) {
+        try {
+            String key = getKey();
+            String sendString = "{\"cmd\": \"write\", \"model\": \"gateway\", \"sid\": \"" + device + "\", \"short_id\": \"0\", \"key\": \"" + key + "\", \"data\": \"{" + getData(keys, values) + ",\"key\":\\\"" + key + "\\\"}\"}";
+            byte[] sendData = sendString.getBytes("UTF-8");
+            InetAddress addr = InetAddress.getByName(gatewayIP);
+            DatagramPacket sendPacket = new DatagramPacket(sendData, sendData.length, addr, dest_port);
+            logger.info("Sending to gateway: " + device + " message: " + sendString );
+            socket.send(sendPacket);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+    */
 
     private String getData(String[] keys, Object[] values) {
         StringBuilder builder = new StringBuilder();
@@ -472,15 +483,16 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
                 first = false;
 
             //write key
-            builder.append("\"").append(k).append("\"").append(": ");
+            builder.append("\\\"").append(k).append("\\\"").append(": ");
 
             //write value
             builder.append(getValue(values[i]));
         }
-        return toString().toString();
+        return builder.toString();
     }
 
     private String getKey() {
+        logger.info("Encrypting \"" + token + "\" with key \"" + key + "\"" );
         return EncryptionHelper.encrypt(token, key);
     }
 
