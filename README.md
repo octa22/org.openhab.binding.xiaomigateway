@@ -1,9 +1,12 @@
 # org.openhab.binding.xiaomigateway
 
 Currently only one gateway is supported and only getting sub device state/reading events is supported.
-Unfortunatelly I have no switch to test controlling its state using write command.
----
+Unfortunately I have no switch to test controlling its state using write command.
+
 Based on info found here: https://github.com/louisZL/lumi-gateway-local-api
+
+___You need to enable developer mode in Mi Home app android version!!!___
+Please see https://github.com/fooxy/homeassistant-aqara/wiki/Enable-dev-mode
 
 # build
 copy __org.openhab.binding.xiaomigateway__ directory to __binding__ directory of OpenHAB source code (https://github.com/openhab/openhab)
@@ -30,7 +33,10 @@ sid is a sub device identificator used in item configuration file.
 possible values are: magnet, temperature, humidity, virtual_switch (button simulates ON/OFF switch), click, long_click, double_click
 
 #openhab.cfg
-No configuration needed
+If you want to control devices please supply a developer key (you can see it in android Mi Home app when you enable developer mode)
+```
+xiaomigateway.key=
+```
 
 #items file
 ```
