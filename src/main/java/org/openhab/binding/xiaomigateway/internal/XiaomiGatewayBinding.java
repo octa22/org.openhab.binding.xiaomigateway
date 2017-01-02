@@ -8,14 +8,12 @@
  */
 package org.openhab.binding.xiaomigateway.internal;
 
-import java.io.IOException;
-import java.net.*;
-import java.util.Map;
-
-import com.google.gson.*;
-import org.openhab.binding.xiaomigateway.XiaomiGatewayBindingProvider;
-
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 import org.apache.commons.lang.StringUtils;
+import org.openhab.binding.xiaomigateway.XiaomiGatewayBindingProvider;
 import org.openhab.core.binding.AbstractActiveBinding;
 import org.openhab.core.items.ItemNotFoundException;
 import org.openhab.core.items.ItemRegistry;
@@ -27,6 +25,12 @@ import org.openhab.core.types.State;
 import org.osgi.framework.BundleContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.IOException;
+import java.net.DatagramPacket;
+import java.net.InetAddress;
+import java.net.MulticastSocket;
+import java.util.Map;
 
 
 /**
@@ -204,7 +208,7 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
         for (final XiaomiGatewayBindingProvider provider : providers) {
             for (String itemName : provider.getItemNames()) {
                 String type = provider.getItemType(itemName);
-                if(!type.startsWith(sid))
+                if (!type.startsWith(sid))
                     continue;
 
                 if (type.endsWith("temperature") && isTemperatureEvent(jobject)) {
@@ -314,7 +318,7 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
         try {
             String data = jobject.get("data").getAsString();
             JsonObject jo = parser.parse(data).getAsJsonObject();
-            if(jo == null || jo.get("status") == null)
+            if (jo == null || jo.get("status") == null)
                 return false;
             return jobject != null && !jobject.isJsonNull() && jobject.get("model").getAsString().equals("switch") && jo.get("status").getAsString().equals(click);
         } catch (Exception ex) {
@@ -441,11 +445,11 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
 
     private void requestWrite(String device, String[] keys, Object[] values) {
         try {
-            String sendString = "{\"cmd\": \"write\", \"sid\": \"" + device + "\", \"data\": {" + getData(keys, values) + ", \"key\": " + getKey() + "}}";
+            String sendString = "{\"cmd\": \"write\", \"sid\": \"" + device + "\", \"data\": \"{" + getData(keys, values) + ", \\\"key\\\": \\\"" + getKey() + "\\\"}\"}";
             byte[] sendData = sendString.getBytes("UTF-8");
             InetAddress addr = InetAddress.getByName(gatewayIP);
             DatagramPacket sendPacket = new DatagramPacket(sendData, sendData.length, addr, dest_port);
-            logger.info("Sending to device: " + device + " message: " + sendString );
+            logger.info("Sending to device: " + device + " message: " + sendString);
             socket.send(sendPacket);
         } catch (IOException e) {
             e.printStackTrace();
@@ -492,13 +496,13 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
     }
 
     private String getKey() {
-        logger.info("Encrypting \"" + token + "\" with key \"" + key + "\"" );
+        logger.info("Encrypting \"" + token + "\" with key \"" + key + "\"");
         return EncryptionHelper.encrypt(token, key);
     }
 
     private String getValue(Object o) {
         if (o instanceof String) {
-            return "\"" + o + "\"";
+            return "\\\"" + o + "\\\"";
         } else
             return o.toString();
     }
@@ -513,6 +517,64 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
         // event bus goes here. This method is only called if one of the
         // BindingProviders provide a binding for the given 'itemName'.
         logger.debug("internalReceiveCommand({},{}) is called!", itemName, command);
+        String itemType = getItemType(itemName);
+        if (!(command instanceof OnOffType)) {
+            logger.error("Only OnOff command types currently supported");
+            return;
+        }
+
+        if (itemType.endsWith(".channel_0") || itemType.endsWith(".channel_1")) {
+            //86ctrl_neutral1/2
+            String sid = getItemSid(itemType);
+            String channel = getItemChannel(itemType);
+
+            requestWrite(sid, new String[]{channel}, new Object[]{command.toString().toLowerCase()});
+        } else if (command.equals(OnOffType.ON) && (itemType.endsWith(".click") || itemType.endsWith(".double_click") || itemType.endsWith(".dual_channel.both_click"))) {
+            //86sw1/2
+            String sid = getItemSid(itemType);
+            String channel = getItemChannel(itemType);
+            String event = getItemEvent(itemType);
+            requestWrite(sid, new String[]{channel}, new Object[]{event});
+        } else {
+            logger.error("Unknown channel: " + getItemChannel(itemName));
+        }
+
+    }
+
+    private String getItemEvent(String itemType) {
+        if (!itemType.contains("."))
+            return "";
+        int pos = itemType.lastIndexOf('.');
+        return itemType.substring(pos + 1);
+
+    }
+
+    private String getItemChannel(String itemType) {
+        if (!itemType.contains("."))
+            return "";
+        int pos = itemType.indexOf('.');
+        int posLast = itemType.indexOf('.');
+        if (pos == posLast) {
+            return itemType.substring(pos + 1);
+        } else {
+            return itemType.substring(pos + 1, posLast - pos);
+        }
+
+    }
+
+    private String getItemSid(String itemName) {
+        if (!itemName.contains("."))
+            return "";
+        int pos = itemName.indexOf('.');
+        return itemName.substring(0, pos);
+    }
+
+    private String getItemType(String itemName) {
+        for (final XiaomiGatewayBindingProvider provider : providers) {
+            if (provider.getItemNames().contains(itemName))
+                return provider.getItemType(itemName);
+        }
+        return "";
     }
 
     /**

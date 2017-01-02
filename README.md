@@ -2,6 +2,8 @@
 
 Currently only one gateway is supported and only getting sub device state/reading events is supported.
 Unfortunatelly I have no switch to test controlling its state using write command.
+---
+Based on info found here: https://github.com/louisZL/lumi-gateway-local-api
 
 # build
 copy __org.openhab.binding.xiaomigateway__ directory to __binding__ directory of OpenHAB source code (https://github.com/openhab/openhab)
@@ -9,7 +11,7 @@ copy __org.openhab.binding.xiaomigateway__ directory to __binding__ directory of
 build using maven (mvn clean install)
 
 # install
-copy __gson-2.3.1.jar__ to __addons__ directory of OpenHAB (search internet or download here: http://central.maven.org/maven2/com/google/code/gson/gson/2.3.1/gson-2.3.1.jar)
+~~copy gson-2.3.1.jar to addons directory of OpenHAB (search internet or download here: http://central.maven.org/maven2/com/google/code/gson/gson/2.3.1/gson-2.3.1.jar)~~
 
 copy target file __org.openhab.binding.xiaomigateway*__.jar__ to __addons__ directory of OpenHAB distribution
 
@@ -36,4 +38,14 @@ Switch  XiaomiClick "Xiaomi button" { xiaomigateway="158d0000f9a538.virtual_swit
 Contact XiaomiContact "Xiaomi contact" { xiaomigateway="158d00010e4104.magnet" }
 Number  RoomTemperature "Temperature  [%.1f °C]" <temperature>	{ xiaomigateway="158d0001182814.temperature" }
 Number  RoomHumidity "Humidity  [%.1f %%]" <humidity>	{ xiaomigateway="158d0001182814.humidity" }
+```
+not tested, but should work - ___send them ON command to simulate event___
+```
+Switch  XiaomiNatural0 "Xiaomi natural CH0" { xiaomigateway="158d0000f9abcd.channel_0" }
+Switch  XiaomiNatural1 "Xiaomi natural CH1" { xiaomigateway="158d0000f9abcd.channel_1" }
+Switch  XiaomiControl0 "Xiaomi CH0 click" { xiaomigateway="158d0000f9defg.channel_0.click" }
+Switch  XiaomiControl0 "Xiaomi CH0 double click" { xiaomigateway="158d0000f9defg.channel_0.double_click" }
+Switch  XiaomiControl1 "Xiaomi CH1 click" { xiaomigateway="158d0000f9defg.channel_1.click" }
+Switch  XiaomiControl1 "Xiaomi CH1 double click" { xiaomigateway="158d0000f9defg.channel_1.double_click" }
+Switch  XiaomiControl1 "Xiaomi both click" { xiaomigateway="158d0000f9defg.both_channel.both_click" }
 ```
