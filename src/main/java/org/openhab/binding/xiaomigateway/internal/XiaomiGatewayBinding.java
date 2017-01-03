@@ -91,7 +91,7 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
      * the refresh interval which is used to poll values from the XiaomiGateway
      * server (optional, defaults to 60000ms)
      */
-    private long refreshInterval = -1;
+    private long refreshInterval = 60000;
 
 
     public XiaomiGatewayBinding() {
@@ -110,7 +110,13 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
         // the configuration is guaranteed not to be null, because the component definition has the
         // configuration-policy set to require. If set to 'optional' then the configuration may be null
 
+        // read further config parameters here ...
+        readConfiguration(configuration);
+        setupSocket();
+        setProperlyConfigured(socket != null);
+    }
 
+    private void readConfiguration(Map<String, Object> configuration) {
         // to override the default refresh interval one has to add a
         // parameter to openhab.cfg like <bindingName>:refresh=<intervalInMs>
         String refreshIntervalString = (String) configuration.get("refresh");
@@ -122,11 +128,6 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
             key = keyString;
         }
 
-        // read further config parameters here ...
-
-        setupSocket();
-        discoverGateways();
-        //setProperlyConfigured(true);
     }
 
     private void discoverGateways() {
@@ -250,7 +251,6 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
         dest_port = jobject.get("port").getAsInt();
         gatewayIP = jobject.get("ip").getAsString();
         logger.info("Discovered Xiaomi Gateway - sid: " + sid + " ip: " + gatewayIP + " port: " + dest_port);
-        setProperlyConfigured(true);
     }
 
     private void listIds(JsonObject jobject) {
@@ -359,10 +359,13 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
     /**
      * Called by the SCR when the configuration of a binding has been changed through the ConfigAdmin service.
      *
-     * @param configuration Updated configuration properties
+     * @param config Updated configuration properties
      */
-    public void modified(final Map<String, Object> configuration) {
+    public void modified(final Map<String, Object> config) {
         // update the internal configuration accordingly
+        if (config != null) {
+            readConfiguration(config);
+        }
     }
 
     /**
@@ -415,6 +418,9 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
     protected void execute() {
         // the frequently executed code (polling) goes here ...
         // logger.debug("execute() method is called!");
+        if (sid.equals("") || token.equals("")) {
+            discoverGateways();
+        }
     }
 
     private void requestIdList() {
@@ -507,7 +513,6 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
             return o.toString();
     }
 
-
     /**
      * @{inheritDoc}
      */
@@ -527,7 +532,6 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
             //86ctrl_neutral1/2
             String sid = getItemSid(itemType);
             String channel = getItemChannel(itemType);
-
             requestWrite(sid, new String[]{channel}, new Object[]{command.toString().toLowerCase()});
         } else if (command.equals(OnOffType.ON) && (itemType.endsWith(".click") || itemType.endsWith(".double_click") || itemType.endsWith(".dual_channel.both_click"))) {
             //86sw1/2
@@ -536,7 +540,8 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
             String event = getItemEvent(itemType);
             requestWrite(sid, new String[]{channel}, new Object[]{event});
         } else {
-            logger.error("Unknown channel: " + getItemChannel(itemName));
+            if (!command.equals(OnOffType.OFF))
+                logger.error("Unsupported channel/event: " + itemType + " or command: " + command);
         }
 
     }
@@ -587,5 +592,6 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
         // BindingProviders provide a binding for the given 'itemName'.
         logger.debug("internalReceiveUpdate({},{}) is called!", itemName, newState);
     }
+
 
 }
