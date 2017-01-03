@@ -42,9 +42,9 @@ xiaomigateway:key=
 #items file
 ```
 Switch  XiaomiSwitch "Xiaomi button" { xiaomigateway="158d0000f9a538.virtual_switch" }
-Switch  XiaomiClick "Xiaomi button click" { xiaomigateway="158d0000f9a538.click" }
-Switch  XiaomiLongClick "Xiaomi button long" { xiaomigateway="158d0000f9a538.long_click" }
-Switch  XiaomiDoubleClick "Xiaomi button double" { xiaomigateway="158d0000f9a538.double_click" }
+Switch  XiaomiClick "Xiaomi button click" { xiaomigateway="158d0000f9axyz.click" }
+Switch  XiaomiLongClick "Xiaomi button long" { xiaomigateway="158d0000f9axyz.long_click" }
+Switch  XiaomiDoubleClick "Xiaomi button double" { xiaomigateway="158d0000f9axyz.double_click" }
 Contact XiaomiContact "Xiaomi contact" { xiaomigateway="158d00010e4104.magnet" }
 Number  RoomTemperature "Temperature  [%.1f °C]" <temperature>	{ xiaomigateway="158d0001182814.temperature" }
 Number  RoomHumidity "Humidity  [%.1f %%]" <humidity>	{ xiaomigateway="158d0001182814.humidity" }
@@ -58,4 +58,59 @@ Switch  XiaomiControl0 "Xiaomi CH0 double click" { xiaomigateway="158d0000f9defg
 Switch  XiaomiControl1 "Xiaomi CH1 click" { xiaomigateway="158d0000f9defg.channel_1.click" }
 Switch  XiaomiControl1 "Xiaomi CH1 double click" { xiaomigateway="158d0000f9defg.channel_1.double_click" }
 Switch  XiaomiControl1 "Xiaomi both click" { xiaomigateway="158d0000f9defg.both_channel.both_click" }
+```
+
+#rule examples
+```
+rule "Control bathroom ventilator with xiaomi button"
+when 
+  Item XiaomiSwitch changed
+then
+    sendCommand(Ventilator, XiaomiClick.state.toString)
+end
+
+rule "Control garage door with Xiaomi button"
+when 
+  Item XiaomiClick received command ON
+then
+    sendCommand(GarageDoor, ON)
+end
+
+rule "Control gate door with Xiaomi button - full"
+when 
+  Item XiaomiLongClick received command ON
+then
+    sendCommand(GateDoorFull, ON)
+end
+
+rule "Control gate door with Xiaomi button - partial"
+when
+  Item XiaomiDoubleClick received command ON
+then
+    sendCommand(GateDoorPartial, ON)
+end
+
+//click
+rule "Rollershutter control with Xiaomi button (UP)"
+when 
+  Item XiaomiRollershutterUP received command ON
+then
+    sendCommand(RollershutterGaming, UP)
+end
+
+//long_click
+rule "Rollershutter control with Xiaomi button (DOWN)"
+when 
+  Item XiaomiRolleshutterDOWN received command ON
+then
+    sendCommand(RollershutterGaming, DOWN)
+end
+
+//double_click
+rule "Rollershutter control with Xiaomi button (STOP)"
+when 
+  Item XiaomiRolleshutterSTOP received command ON
+then
+    sendCommand(RollershutterGaming, STOP)
+end
 ```

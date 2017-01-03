@@ -226,15 +226,15 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
                 }
                 if (type.endsWith(".click") && isButtonEvent(jobject, "click")) {
                     logger.debug("XiaomiGateway: processing click event");
-                    eventPublisher.postUpdate(itemName, OnOffType.ON);
+                    eventPublisher.sendCommand(itemName, OnOffType.ON);
                 }
                 if (type.endsWith(".double_click") && isButtonEvent(jobject, "double_click")) {
                     logger.debug("XiaomiGateway: processing double click event");
-                    eventPublisher.postUpdate(itemName, OnOffType.ON);
+                    eventPublisher.sendCommand(itemName, OnOffType.ON);
                 }
                 if (type.endsWith(".long_click") && isButtonEvent(jobject, "long_click_press")) {
                     logger.debug("XiaomiGateway: processing long click event");
-                    eventPublisher.postUpdate(itemName, OnOffType.ON);
+                    eventPublisher.sendCommand(itemName, OnOffType.ON);
                 }
                 if (type.endsWith(".magnet") && isMagnetEvent(jobject)) {
                     logger.debug("XiaomiGateway: processing magnet event");
@@ -270,14 +270,14 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
 
     private void processVirtualSwitchEvent(String itemName) {
         State oldValue;
-        State newState = OnOffType.OFF;
+        Command command = OnOffType.OFF;
         try {
             oldValue = itemRegistry.getItem(itemName).getState();
-            newState = oldValue.equals(OnOffType.ON) ? OnOffType.OFF : OnOffType.ON;
+            command = oldValue.equals(OnOffType.ON) ? OnOffType.OFF : OnOffType.ON;
         } catch (ItemNotFoundException e) {
             e.printStackTrace();
         }
-        eventPublisher.postUpdate(itemName, newState);
+        eventPublisher.sendCommand(itemName, command);
     }
 
     private void processMagnetEvent(String itemName, JsonObject jobject) {
