@@ -66,7 +66,7 @@ rule "Control bathroom ventilator with xiaomi button"
 when 
   Item XiaomiSwitch changed
 then
-    sendCommand(Ventilator, XiaomiClick.state.toString)
+    sendCommand(Ventilator, XiaomiSwitch.state.toString)
 end
 
 rule "Control garage door with Xiaomi button"
