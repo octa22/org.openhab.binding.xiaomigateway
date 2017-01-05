@@ -240,10 +240,18 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
                     logger.debug("XiaomiGateway: processing magnet event");
                     processMagnetEvent(itemName, jobject);
                 }
+                if (type.endsWith(".motion") && isMotionEvent(jobject)) {
+                    logger.debug("XiaomiGateway: processing motion event");
+                    processMotionEvent(itemName, jobject);
+                }
 
             }
 
         }
+    }
+
+    private boolean isMotionEvent(JsonObject jobject) {
+        return jobject != null && !jobject.isJsonNull() && jobject.get("model").getAsString().equals("motion");
     }
 
     private void getGatewayInfo(JsonObject jobject) {
@@ -266,6 +274,21 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
         String sid = jobject.get("sid").getAsString();
         String model = jobject.get("model").getAsString();
         logger.info("Detected Xiaomi smart device - sid: " + sid + " model: " + model);
+    }
+
+    private void processMotionEvent(String itemName, JsonObject jobject) {
+        String data = jobject.get("data").getAsString();
+        JsonObject jo = parser.parse(data).getAsJsonObject();
+        String stat = jo.get("status").getAsString().toLowerCase();
+        State oldValue;
+        try {
+            oldValue = itemRegistry.getItem(itemName).getState();
+            State newValue = stat.equals("motion") ? OpenClosedType.OPEN : OpenClosedType.CLOSED;
+            if (!newValue.equals(oldValue) || newValue.equals(OpenClosedType.OPEN))
+                eventPublisher.postUpdate(itemName, newValue);
+        } catch (ItemNotFoundException e) {
+            e.printStackTrace();
+        }
     }
 
     private void processVirtualSwitchEvent(String itemName) {
@@ -293,7 +316,6 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
         } catch (ItemNotFoundException e) {
             e.printStackTrace();
         }
-
     }
 
     private void processTemperatureEvent(String itemName, JsonObject jobject) {
