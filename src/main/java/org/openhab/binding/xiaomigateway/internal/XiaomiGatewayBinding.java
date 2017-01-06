@@ -194,8 +194,18 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
                     continue;
                 }
 
-                //report and non gateway heartbeat
-                processOtherCommands(jobject);
+                if (command.equals("write_ack")) {
+                    continue;
+                }
+
+                if (command.equals("report") || command.equals("heartbeat")) {
+                    //report and non gateway heartbeat
+                    processOtherCommands(jobject);
+                    continue;
+                } else {
+                    logger.error("Unknown Xiaomi gateway command: " + command);
+                }
+
             }
         } catch (IOException e) {
             e.printStackTrace();
@@ -244,7 +254,7 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
                     logger.debug("XiaomiGateway: processing motion event");
                     processMotionEvent(itemName, jobject);
                 }
-                if( isCubeEvent(jobject)) {
+                if (isCubeEvent(jobject)) {
                     processCubeEvent(itemName, type, jobject);
                 }
             }
@@ -255,13 +265,11 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
     private void processCubeEvent(String itemName, String type, JsonObject jobject) {
         String event = getStatusEvent(jobject);
         boolean publish = false;
-        if( isRotateCubeEvent(jobject))
-        {
+        if (isRotateCubeEvent(jobject)) {
             event = "rotate";
         }
         logger.debug("XiaomiGateway: processing cube event " + event);
-        switch (event)
-        {
+        switch (event) {
             case "flip90":
                 publish = type.endsWith(".flip90");
                 break;
@@ -293,7 +301,7 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
                 logger.error("Unknown cube event: " + event);
         }
 
-        if( publish )
+        if (publish)
             eventPublisher.sendCommand(itemName, OnOffType.ON);
     }
 
@@ -622,6 +630,11 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
         String itemType = getItemType(itemName);
         if (!(command instanceof OnOffType)) {
             logger.error("Only OnOff command types currently supported");
+            return;
+        }
+        if( !itemName.contains("channel"))
+        {
+            //only channel items
             return;
         }
 
