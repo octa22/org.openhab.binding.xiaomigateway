@@ -244,10 +244,85 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
                     logger.debug("XiaomiGateway: processing motion event");
                     processMotionEvent(itemName, jobject);
                 }
-
+                if( isCubeEvent(jobject)) {
+                    processCubeEvent(itemName, type, jobject);
+                }
             }
 
         }
+    }
+
+    private void processCubeEvent(String itemName, String type, JsonObject jobject) {
+        String event = getStatusEvent(jobject);
+        boolean publish = false;
+        if( isRotateCubeEvent(jobject))
+        {
+            event = "rotate";
+        }
+        logger.debug("XiaomiGateway: processing cube event " + event);
+        switch (event)
+        {
+            case "flip90":
+                publish = type.endsWith(".flip90");
+                break;
+            case "flip180":
+                publish = type.endsWith(".flip180");
+                break;
+            case "move":
+                publish = type.endsWith(".move");
+                break;
+            case "tap_twice":
+                publish = type.endsWith(".tap_twice");
+                break;
+            case "shake_air":
+                publish = type.endsWith(".shake_air");
+                break;
+            case "swing":
+                publish = type.endsWith(".swing");
+                break;
+            case "alert":
+                publish = type.endsWith(".alert");
+                break;
+            case "free_fall":
+                publish = type.endsWith(".free_fall");
+                break;
+            case "rotate":
+                logger.info("rotate is not supported yet!");
+                break;
+            default:
+                logger.error("Unknown cube event: " + event);
+        }
+
+        if( publish )
+            eventPublisher.sendCommand(itemName, OnOffType.ON);
+    }
+
+    private boolean isRotateCubeEvent(JsonObject jobject) {
+        try {
+            String data = jobject.get("data").getAsString();
+            JsonObject jo = parser.parse(data).getAsJsonObject();
+            return jobject.get("model").getAsString().equals("cube") && jo != null && jo.get("rotate") != null;
+        } catch (Exception ex) {
+            logger.error(ex.toString());
+            return false;
+        }
+    }
+
+    private String getStatusEvent(JsonObject jobject) {
+        try {
+            String data = jobject.get("data").getAsString();
+            JsonObject jo = parser.parse(data).getAsJsonObject();
+            if (jo == null || jo.get("status") == null)
+                return null;
+            return jo.get("status").getAsString();
+        } catch (Exception ex) {
+            logger.error(ex.toString());
+            return null;
+        }
+    }
+
+    private boolean isCubeEvent(JsonObject jobject) {
+        return jobject != null && !jobject.isJsonNull() && jobject.get("model").getAsString().equals("cube");
     }
 
     private boolean isMotionEvent(JsonObject jobject) {
