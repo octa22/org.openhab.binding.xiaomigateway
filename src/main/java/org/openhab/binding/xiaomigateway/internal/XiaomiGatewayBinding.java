@@ -27,6 +27,7 @@ import org.osgi.framework.BundleContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.awt.*;
 import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.InetAddress;
@@ -281,8 +282,16 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
                 return;
             long rgb = jo.get("rgb").getAsLong();
             State oldValue = itemRegistry.getItem(itemName).getState();
-            State newValue = rgb > 0 ? OnOffType.ON : OnOffType.OFF;
-            if (!newValue.equals(oldValue) || newValue.equals(OpenClosedType.OPEN))
+            State newValue = oldValue;
+            if (oldValue instanceof OnOffType) {
+                newValue = rgb > 0 ? OnOffType.ON : OnOffType.OFF;
+            } else {
+                //HSBType
+                long br = rgb / 65536 / 256;
+                Color color = new Color((int) (rgb - (br * 65536 * 256)));
+                newValue = new HSBType(color);
+            }
+            if (!newValue.equals(oldValue))
                 eventPublisher.postUpdate(itemName, newValue);
         } catch (Exception ex) {
             logger.error(ex.toString());
@@ -674,7 +683,9 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
             if (command instanceof OnOffType) {
                 changeGatewayColor(command.equals(OnOffType.OFF) ? 0 : startColor);
             } else {
-                //HSBType
+                HSBType hsb = (HSBType) command;
+                long color = getRGBColor(hsb);
+                changeGatewayColor(color);
             }
             return;
         }
@@ -695,6 +706,14 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
                 logger.error("Unsupported channel/event: " + itemType + " or command: " + command);
         }
 
+    }
+
+    private long getRGBColor(HSBType hsb) {
+        //long br = (long) (hsb.getBrightness().floatValue() / 100 * 255);
+        long red = (long) (hsb.getRed().floatValue() / 100 * 255);
+        long green = (long) (hsb.getGreen().floatValue() / 100 * 255);
+        long blue = (long) (hsb.getBlue().floatValue() / 100 * 255);
+        return 65536 * 256 * 100 + 65536 * red + 256 * green + blue;
     }
 
     private void changeGatewayColor(long color) {

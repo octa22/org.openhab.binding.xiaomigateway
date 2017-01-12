@@ -2,7 +2,7 @@
 
 This binding brings Xiaomi Gateway Smart Home devices (Aqara) integration with OpenHAB1.x
 Currently only one gateway is supported and only getting sub device state/reading events confirmed to be working. 
-Controlling of gateway light works too (only On/Off, no color change within OpenHAB yet)
+Controlling of gateway light works too including color change within OpenHAB.
 Unfortunately I have no switch to test controlling its state using write command, but write key generation based on gateway token seems to be implemented OK.
 
 Based on info found here: https://github.com/louisZL/lumi-gateway-local-api
@@ -54,6 +54,7 @@ Contact XiaomiContact "Xiaomi contact" { xiaomigateway="158d00010e4104.magnet" }
 Number  RoomTemperature "Temperature  [%.1f °C]" <temperature>	{ xiaomigateway="158d0001182814.temperature" }
 Number  RoomHumidity "Humidity  [%.1f %%]" <humidity>	{ xiaomigateway="158d0001182814.humidity" }
 Switch  XiaomiGatewayLight "Gateway light" { xiaomigateway="f1b5299a55e5.color" }
+Color   XiaomiGatewayLightColor "Gateway light color" { xiaomigateway="f1b5299a55e5.color" }
 ```
 not tested, but should work - ___send ON command to these items to fire an event___
 ```
