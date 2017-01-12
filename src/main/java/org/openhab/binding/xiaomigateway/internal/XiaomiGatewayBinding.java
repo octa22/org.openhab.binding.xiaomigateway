@@ -18,6 +18,7 @@ import org.openhab.core.binding.AbstractActiveBinding;
 import org.openhab.core.items.ItemNotFoundException;
 import org.openhab.core.items.ItemRegistry;
 import org.openhab.core.library.types.DecimalType;
+import org.openhab.core.library.types.HSBType;
 import org.openhab.core.library.types.OnOffType;
 import org.openhab.core.library.types.OpenClosedType;
 import org.openhab.core.types.Command;
@@ -58,6 +59,8 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
     //Gateway info
     private String sid = "";
     private String token = "";
+    private long rgb = 0;
+    private long startColor = 1677786880L; //green
 
     //Gson parser
     private JsonParser parser = new JsonParser();
@@ -123,8 +126,12 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
         if (StringUtils.isNotBlank(refreshIntervalString)) {
             refreshInterval = Long.parseLong(refreshIntervalString);
         }
+        String startColorString = (String) configuration.get("startColor");
+        if (StringUtils.isNotBlank(startColorString)) {
+            startColor = Long.parseLong(startColorString);
+        }
         String keyString = (String) configuration.get("key");
-        if (StringUtils.isNotBlank(refreshIntervalString)) {
+        if (StringUtils.isNotBlank(keyString)) {
             key = keyString;
         }
 
@@ -139,7 +146,7 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
 
             socket.send(sendPacket);
         } catch (IOException e) {
-            e.printStackTrace();
+            logger.error(e.toString());
         }
     }
 
@@ -150,7 +157,7 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
             socket = new MulticastSocket(dest_port); // must bind receive side
             socket.joinGroup(InetAddress.getByName(MCAST_ADDR));
         } catch (IOException e) {
-            e.printStackTrace();
+            logger.error(e.toString());
         }
 
         thread = new Thread(new Runnable() {
@@ -186,7 +193,7 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
                 }
                 if (command.equals("read_ack")) {
                     listDevice(jobject);
-                    processOtherCommands(jobject);
+                    //processOtherCommands(jobject);
                     continue;
                 }
                 if (command.equals("heartbeat") && jobject.get("model").getAsString().equals("gateway")) {
@@ -208,7 +215,7 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
 
             }
         } catch (IOException e) {
-            e.printStackTrace();
+            logger.error(e.toString());
         }
     }
 
@@ -229,6 +236,10 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
                 if (type.endsWith("humidity") && isHumidityEvent(jobject)) {
                     logger.debug("XiaomiGateway: processing humidity event");
                     processHumidityEvent(itemName, jobject);
+                }
+                if (type.endsWith(".color") && getItemSid(type).equals(sid)) {
+                    logger.debug("XiaomiGateway: processing color event");
+                    processColorEvent(itemName, jobject);
                 }
                 if (type.endsWith(".virtual_switch") && isButtonEvent(jobject, "click")) {
                     logger.debug("XiaomiGateway: processing virtual switch click event");
@@ -259,6 +270,22 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
                 }
             }
 
+        }
+    }
+
+    private void processColorEvent(String itemName, JsonObject jobject) {
+        try {
+            String data = jobject.get("data").getAsString();
+            JsonObject jo = parser.parse(data).getAsJsonObject();
+            if (jo == null || jo.get("rgb") == null)
+                return;
+            long rgb = jo.get("rgb").getAsLong();
+            State oldValue = itemRegistry.getItem(itemName).getState();
+            State newValue = rgb > 0 ? OnOffType.ON : OnOffType.OFF;
+            if (!newValue.equals(oldValue) || newValue.equals(OpenClosedType.OPEN))
+                eventPublisher.postUpdate(itemName, newValue);
+        } catch (Exception ex) {
+            logger.error(ex.toString());
         }
     }
 
@@ -357,6 +384,10 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
         String sid = jobject.get("sid").getAsString();
         String model = jobject.get("model").getAsString();
         logger.info("Detected Xiaomi smart device - sid: " + sid + " model: " + model);
+        if (model.equals("sensor_ht") || model.equals("motion") || model.equals("magnet")) {
+            //read value
+            processOtherCommands(jobject);
+        }
     }
 
     private void processMotionEvent(String itemName, JsonObject jobject) {
@@ -370,7 +401,7 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
             if (!newValue.equals(oldValue) || newValue.equals(OpenClosedType.OPEN))
                 eventPublisher.postUpdate(itemName, newValue);
         } catch (ItemNotFoundException e) {
-            e.printStackTrace();
+            logger.error(e.toString());
         }
     }
 
@@ -381,7 +412,7 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
             oldValue = itemRegistry.getItem(itemName).getState();
             command = oldValue.equals(OnOffType.ON) ? OnOffType.OFF : OnOffType.ON;
         } catch (ItemNotFoundException e) {
-            e.printStackTrace();
+            logger.error(e.toString());
         }
         eventPublisher.sendCommand(itemName, command);
     }
@@ -397,7 +428,7 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
             if (!newValue.equals(oldValue))
                 eventPublisher.postUpdate(itemName, newValue);
         } catch (ItemNotFoundException e) {
-            e.printStackTrace();
+            logger.error(e.toString());
         }
     }
 
@@ -528,6 +559,7 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
         }
     }
 
+
     private void requestIdList() {
         try {
             String sendString = "{\"cmd\": \"get_id_list\"}";
@@ -537,7 +569,7 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
 
             socket.send(sendPacket);
         } catch (IOException e) {
-            e.printStackTrace();
+            logger.error(e.toString());
         }
     }
 
@@ -550,7 +582,7 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
 
             socket.send(sendPacket);
         } catch (IOException e) {
-            e.printStackTrace();
+            logger.error(e.toString());
         }
     }
 
@@ -560,28 +592,29 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
             byte[] sendData = sendString.getBytes("UTF-8");
             InetAddress addr = InetAddress.getByName(gatewayIP);
             DatagramPacket sendPacket = new DatagramPacket(sendData, sendData.length, addr, dest_port);
-            logger.info("Sending to device: " + device + " message: " + sendString);
+            logger.debug("Sending to device: " + device + " message: " + sendString);
+            socket.send(sendPacket);
+        } catch (IOException e) {
+            logger.error(e.toString());
+        }
+    }
+
+
+    private void requestWriteGateway(String[] keys, Object[] values) {
+        try {
+            String key = getKey();
+            //String sendString = "{\"cmd\": \"write\", \"model\": \"gateway\", \"sid\": \"" + device + "\", \"short_id\": \"0\", \"key\": \"" + key + "\", \"data\": \"{" + getData(keys, values) + ",\"key\":\\\"" + key + "\\\"}\"}";
+            String sendString = "{\"cmd\": \"write\", \"model\": \"gateway\", \"sid\": \"" + sid + "\", \"short_id\": \"0\", \"data\": \"{" + getData(keys, values) + ",\"key\":\\\"" + key + "\\\"}\"}";
+            byte[] sendData = sendString.getBytes("UTF-8");
+            InetAddress addr = InetAddress.getByName(gatewayIP);
+            DatagramPacket sendPacket = new DatagramPacket(sendData, sendData.length, addr, dest_port);
+            logger.info("Sending to gateway: " + sid + " message: " + sendString);
             socket.send(sendPacket);
         } catch (IOException e) {
             e.printStackTrace();
         }
     }
 
-    /*
-    private void requestWriteGateway(String device, String[] keys, Object[] values) {
-        try {
-            String key = getKey();
-            String sendString = "{\"cmd\": \"write\", \"model\": \"gateway\", \"sid\": \"" + device + "\", \"short_id\": \"0\", \"key\": \"" + key + "\", \"data\": \"{" + getData(keys, values) + ",\"key\":\\\"" + key + "\\\"}\"}";
-            byte[] sendData = sendString.getBytes("UTF-8");
-            InetAddress addr = InetAddress.getByName(gatewayIP);
-            DatagramPacket sendPacket = new DatagramPacket(sendData, sendData.length, addr, dest_port);
-            logger.info("Sending to gateway: " + device + " message: " + sendString );
-            socket.send(sendPacket);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
-    */
 
     private String getData(String[] keys, Object[] values) {
         StringBuilder builder = new StringBuilder();
@@ -628,13 +661,21 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
         // BindingProviders provide a binding for the given 'itemName'.
         logger.debug("internalReceiveCommand({},{}) is called!", itemName, command);
         String itemType = getItemType(itemName);
-        if (!(command instanceof OnOffType)) {
-            logger.error("Only OnOff command types currently supported");
+        if (!(command instanceof OnOffType || command instanceof HSBType)) {
+            logger.error("Only OnOff/HSB command types currently supported");
             return;
         }
-        if( !itemName.contains("channel"))
-        {
+        if (!(itemType.contains("channel") || itemType.endsWith(".color"))) {
             //only channel items
+            return;
+        }
+
+        if (itemType.endsWith(".color") && sid.equals(getItemSid(itemType))) {
+            if (command instanceof OnOffType) {
+                changeGatewayColor(command.equals(OnOffType.OFF) ? 0 : startColor);
+            } else {
+                //HSBType
+            }
             return;
         }
 
@@ -654,6 +695,10 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
                 logger.error("Unsupported channel/event: " + itemType + " or command: " + command);
         }
 
+    }
+
+    private void changeGatewayColor(long color) {
+        requestWriteGateway(new String[]{"rgb"}, new Object[]{color});
     }
 
     private String getItemEvent(String itemType) {

@@ -1,7 +1,8 @@
 # org.openhab.binding.xiaomigateway
 
 This binding brings Xiaomi Gateway Smart Home devices (Aqara) integration with OpenHAB1.x
-Currently only one gateway is supported and only getting sub device state/reading events confirmed to be working.
+Currently only one gateway is supported and only getting sub device state/reading events confirmed to be working. 
+Controlling of gateway light works too (only On/Off, no color change within OpenHAB yet)
 Unfortunately I have no switch to test controlling its state using write command, but write key generation based on gateway token seems to be implemented OK.
 
 Based on info found here: https://github.com/louisZL/lumi-gateway-local-api
@@ -22,7 +23,7 @@ copy target file __org.openhab.binding.xiaomigateway*.jar__ to __addons__ direct
 # usage
 The binding detects a Xiaomi gateway on local network and lists all sub devices. For example:
 ```
-2016-12-24 00:29:27.679 [INFO ] [o.o.b.x.i.XiaomiGatewayBinding] - Discovered Xiaomi Gateway - sid: f0b4299a54e4 ip: 192.168.2.187 port: 9898
+2016-12-24 00:29:27.679 [INFO ] [o.o.b.x.i.XiaomiGatewayBinding] - Discovered Xiaomi Gateway - sid: f1b5299a55e5 ip: 192.168.2.187 port: 9898
 2016-12-24 00:29:27.681 [INFO ] [.service.AbstractActiveService] - XiaomiGateway Refresh Service has been started
 2016-12-24 00:29:28.084 [INFO ] [o.o.b.x.i.XiaomiGatewayBinding] - Discovered total of 3 Xiaomi smart devices
 2016-12-24 00:29:28.089 [INFO ] [o.o.b.x.i.XiaomiGatewayBinding] - Detected Xiaomi smart device - sid: 158d0001182814 model: sensor_ht
@@ -35,8 +36,12 @@ possible values are: magnet, temperature, humidity, virtual_switch (button simul
 
 #openhab.cfg
 If you want to control devices please supply a developer key (you can see it in Mi Home app when you enable developer mode)
+If you want to change default startup color, please include startConfig configuration (e.g. xiaomigateway:startColor=1677786880L).
 ```
 xiaomigateway:key=
+
+//Default startColor=1677786880L
+xiaomigateway:startColor=
 ```
 
 #items file
@@ -48,6 +53,7 @@ Switch  XiaomiDoubleClick "Xiaomi button double" { xiaomigateway="158d0000f9axyz
 Contact XiaomiContact "Xiaomi contact" { xiaomigateway="158d00010e4104.magnet" }
 Number  RoomTemperature "Temperature  [%.1f °C]" <temperature>	{ xiaomigateway="158d0001182814.temperature" }
 Number  RoomHumidity "Humidity  [%.1f %%]" <humidity>	{ xiaomigateway="158d0001182814.humidity" }
+Switch  XiaomiGatewayLight "Gateway light" { xiaomigateway="f1b5299a55e5.color" }
 ```
 not tested, but should work - ___send ON command to these items to fire an event___
 ```
