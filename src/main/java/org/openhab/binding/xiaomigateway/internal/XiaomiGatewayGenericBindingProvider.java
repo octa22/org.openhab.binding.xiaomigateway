@@ -10,10 +10,7 @@ package org.openhab.binding.xiaomigateway.internal;
 
 import org.openhab.binding.xiaomigateway.XiaomiGatewayBindingProvider;
 import org.openhab.core.items.Item;
-import org.openhab.core.library.items.ColorItem;
-import org.openhab.core.library.items.ContactItem;
-import org.openhab.core.library.items.NumberItem;
-import org.openhab.core.library.items.SwitchItem;
+import org.openhab.core.library.items.*;
 import org.openhab.model.item.binding.AbstractGenericBindingProvider;
 import org.openhab.model.item.binding.BindingConfigParseException;
 
@@ -38,10 +35,10 @@ public class XiaomiGatewayGenericBindingProvider extends AbstractGenericBindingP
 	 */
 	@Override
 	public void validateItemType(Item item, String bindingConfig) throws BindingConfigParseException {
-		if (!(item instanceof ColorItem || item instanceof SwitchItem || item instanceof ContactItem || item instanceof NumberItem)) {
+		if (!(item instanceof DimmerItem || item instanceof ColorItem || item instanceof SwitchItem || item instanceof ContactItem || item instanceof NumberItem)) {
 			throw new BindingConfigParseException("item '" + item.getName()
 					+ "' is of type '" + item.getClass().getSimpleName()
-					+ "', only Switch- Contact- and NumberItems are allowed - please check your *.items configuration");
+					+ "', only Dimmer- Color- Switch- Contact- and NumberItems are allowed - please check your *.items configuration");
 		}
 	}
 

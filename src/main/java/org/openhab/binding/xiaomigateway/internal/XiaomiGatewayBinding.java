@@ -17,10 +17,7 @@ import org.openhab.binding.xiaomigateway.XiaomiGatewayBindingProvider;
 import org.openhab.core.binding.AbstractActiveBinding;
 import org.openhab.core.items.ItemNotFoundException;
 import org.openhab.core.items.ItemRegistry;
-import org.openhab.core.library.types.DecimalType;
-import org.openhab.core.library.types.HSBType;
-import org.openhab.core.library.types.OnOffType;
-import org.openhab.core.library.types.OpenClosedType;
+import org.openhab.core.library.types.*;
 import org.openhab.core.types.Command;
 import org.openhab.core.types.State;
 import org.osgi.framework.BundleContext;
@@ -242,6 +239,10 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
                     logger.debug("XiaomiGateway: processing color event");
                     processColorEvent(itemName, jobject);
                 }
+                if (type.endsWith(".brightness") && getItemSid(type).equals(sid)) {
+                    logger.debug("XiaomiGateway: processing brightness event");
+                    processColorEvent(itemName, jobject);
+                }
                 if (type.endsWith(".virtual_switch") && isButtonEvent(jobject, "click")) {
                     logger.debug("XiaomiGateway: processing virtual switch click event");
                     processVirtualSwitchEvent(itemName);
@@ -280,17 +281,22 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
             JsonObject jo = parser.parse(data).getAsJsonObject();
             if (jo == null || jo.get("rgb") == null)
                 return;
-            long rgb = jo.get("rgb").getAsLong();
+            rgb = jo.get("rgb").getAsLong();
             State oldValue = itemRegistry.getItem(itemName).getState();
             State newValue = oldValue;
             if (oldValue instanceof OnOffType) {
                 newValue = rgb > 0 ? OnOffType.ON : OnOffType.OFF;
-            } else {
+            } else if (oldValue instanceof HSBType) {
                 //HSBType
                 long br = rgb / 65536 / 256;
                 Color color = new Color((int) (rgb - (br * 65536 * 256)));
                 newValue = new HSBType(color);
+            } else {
+                //Percent Type
+                long br = rgb / 65536 / 256;
+                newValue = new PercentType((int) br);
             }
+
             if (!newValue.equals(oldValue))
                 eventPublisher.postUpdate(itemName, newValue);
         } catch (Exception ex) {
@@ -670,23 +676,33 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
         // BindingProviders provide a binding for the given 'itemName'.
         logger.debug("internalReceiveCommand({},{}) is called!", itemName, command);
         String itemType = getItemType(itemName);
-        if (!(command instanceof OnOffType || command instanceof HSBType)) {
-            logger.error("Only OnOff/HSB command types currently supported");
+        if (!(command instanceof PercentType || command instanceof OnOffType || command instanceof HSBType)) {
+            logger.error("Only OnOff/HSB/Percent command types currently supported");
             return;
         }
-        if (!(itemType.contains("channel") || itemType.endsWith(".color"))) {
+        if (!(itemType.contains("channel") || itemType.endsWith(".color") || itemType.endsWith(".brightness"))) {
             //only channel items
             return;
         }
 
-        if (itemType.endsWith(".color") && sid.equals(getItemSid(itemType))) {
+        if ((itemType.endsWith(".color") || itemType.endsWith(".brightness")) && sid.equals(getItemSid(itemType))) {
             if (command instanceof OnOffType) {
                 changeGatewayColor(command.equals(OnOffType.OFF) ? 0 : startColor);
-            } else {
+            } else if (command instanceof HSBType) {
                 HSBType hsb = (HSBType) command;
                 long color = getRGBColor(hsb);
                 changeGatewayColor(color);
+            } else {
+                if( rgb == 0 )
+                    return;
+
+                //Percent type
+                PercentType brightness = (PercentType) command;
+                long currentBrightness = (rgb / 65536 / 256);
+                long color = rgb - (currentBrightness * 65536 * 256) + brightness.longValue() * 65536 * 256;
+                changeGatewayColor(color);
             }
+
             return;
         }
 
