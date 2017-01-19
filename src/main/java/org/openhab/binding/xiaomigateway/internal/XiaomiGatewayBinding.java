@@ -194,9 +194,16 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
                     //processOtherCommands(jobject);
                     continue;
                 }
-                if (command.equals("heartbeat") && jobject.get("model").getAsString().equals("gateway")) {
-                    token = jobject.get("token").getAsString();
-                    continue;
+                if (command.equals("heartbeat")) {
+                    String model = jobject.get("model").getAsString();
+
+                    if( model.equals("gateway")) {
+                        token = jobject.get("token").getAsString();
+                        continue;
+                    }
+                    if( model.equals("cube")) {
+                        continue;
+                    }
                 }
 
                 if (command.equals("write_ack")) {

@@ -36,11 +36,11 @@ possible values are: magnet, temperature, humidity, virtual_switch (button simul
 
 #openhab.cfg
 If you want to control devices please supply a developer key (you can see it in Mi Home app when you enable developer mode)
-If you want to change default startup color, please include startConfig configuration (e.g. xiaomigateway:startColor=1677786880L).
+If you want to change default startup color, please include startConfig configuration (e.g. xiaomigateway:startColor=1677786880).
 ```
 xiaomigateway:key=
 
-//Default startColor=1677786880L
+//Default startColor=1677786880
 xiaomigateway:startColor=
 ```
 
