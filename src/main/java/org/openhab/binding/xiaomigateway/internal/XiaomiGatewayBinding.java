@@ -127,7 +127,7 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
         String startColorString = (String) configuration.get("startColor");
         if (StringUtils.isNotBlank(startColorString)) {
             //hack - replace long value ending L with blank because of misleading dccumentation
-            startColor = Long.parseLong(startColorString.replace("L",""));
+            startColor = Long.parseLong(startColorString.replace("L", ""));
         }
         String keyString = (String) configuration.get("key");
         if (StringUtils.isNotBlank(keyString)) {
@@ -168,9 +168,8 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
     }
 
     private void receiveData(MulticastSocket socket, DatagramPacket dgram) {
-
-        try {
-            while (true) {
+        while (!socket.isClosed()) {
+            try {
                 socket.receive(dgram);
                 String sentence = new String(dgram.getData(), 0,
                         dgram.getLength());
@@ -180,7 +179,7 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
                 JsonObject jobject = parser.parse(sentence).getAsJsonObject();
                 String command = jobject.get("cmd").getAsString();
 
-                switch(command) {
+                switch (command) {
                     case "iam":
                         getGatewayInfo(jobject);
                         requestIdList();
@@ -196,11 +195,11 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
                         break;
                     case "heartbeat":
                         String model = jobject.get("model").getAsString();
-                        if( model.equals("gateway")) {
+                        if (model.equals("gateway")) {
                             token = jobject.get("token").getAsString();
                             break;
                         }
-                        if( model.equals("cube") || model.equals("switch")) {
+                        if (model.equals("cube") || model.equals("switch") || model.equals("motion")) {
                             break;
                         }
                         processOtherCommands(jobject);
@@ -211,10 +210,11 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
                     default:
                         logger.error("Unknown Xiaomi gateway command: " + command);
                 }
+            } catch (Exception e) {
+                logger.error(e.toString());
             }
-        } catch (IOException e) {
-            logger.error(e.toString());
         }
+
     }
 
     private void processOtherCommands(JsonObject jobject) {
@@ -619,7 +619,7 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
         try {
             String key = getKey();
             //String sendString = "{\"cmd\": \"write\", \"model\": \"gateway\", \"sid\": \"" + device + "\", \"short_id\": \"0\", \"key\": \"" + key + "\", \"data\": \"{" + getData(keys, values) + ",\"key\":\\\"" + key + "\\\"}\"}";
-            String sendString = "{\"cmd\": \"write\", \"model\": \"gateway\", \"sid\": \"" + sid + "\", \"short_id\": \"0\", \"data\": \"{" + getData(keys, values) + ",\"key\":\\\"" + key + "\\\"}\"}";
+            String sendString = "{\"cmd\": \"write\", \"model\": \"gateway\", \"sid\": \"" + sid + "\", \"short_id\": \"0\", \"data\": \"{" + getData(keys, values) + ",\\\"key\\\":\\\"" + key + "\\\"}\"}";
             byte[] sendData = sendString.getBytes("UTF-8");
             InetAddress addr = InetAddress.getByName(gatewayIP);
             DatagramPacket sendPacket = new DatagramPacket(sendData, sendData.length, addr, dest_port);
@@ -693,7 +693,7 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
                 long color = getRGBColor(hsb);
                 changeGatewayColor(color);
             } else {
-                if( rgb == 0 )
+                if (rgb == 0)
                     return;
 
                 //Percent type
