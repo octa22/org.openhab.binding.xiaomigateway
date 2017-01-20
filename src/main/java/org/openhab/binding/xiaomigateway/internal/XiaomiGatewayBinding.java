@@ -126,7 +126,8 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
         }
         String startColorString = (String) configuration.get("startColor");
         if (StringUtils.isNotBlank(startColorString)) {
-            startColor = Long.parseLong(startColorString);
+            //hack - replace long value ending L with blank because of misleading dccumentation
+            startColor = Long.parseLong(startColorString.replace("L",""));
         }
         String keyString = (String) configuration.get("key");
         if (StringUtils.isNotBlank(keyString)) {
@@ -179,45 +180,37 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
                 JsonObject jobject = parser.parse(sentence).getAsJsonObject();
                 String command = jobject.get("cmd").getAsString();
 
-                if (command.equals("iam")) {
-                    getGatewayInfo(jobject);
-                    requestIdList();
-                    continue;
-                }
-                if (command.equals("get_id_list_ack")) {
-                    token = jobject.get("token").getAsString();
-                    listIds(jobject);
-                    continue;
-                }
-                if (command.equals("read_ack")) {
-                    listDevice(jobject);
-                    //processOtherCommands(jobject);
-                    continue;
-                }
-                if (command.equals("heartbeat")) {
-                    String model = jobject.get("model").getAsString();
-
-                    if( model.equals("gateway")) {
+                switch(command) {
+                    case "iam":
+                        getGatewayInfo(jobject);
+                        requestIdList();
+                        break;
+                    case "get_id_list_ack":
                         token = jobject.get("token").getAsString();
-                        continue;
-                    }
-                    if( model.equals("cube")) {
-                        continue;
-                    }
+                        listIds(jobject);
+                        break;
+                    case "read_ack":
+                        listDevice(jobject);
+                        break;
+                    case "write_ack":
+                        break;
+                    case "heartbeat":
+                        String model = jobject.get("model").getAsString();
+                        if( model.equals("gateway")) {
+                            token = jobject.get("token").getAsString();
+                            break;
+                        }
+                        if( model.equals("cube") || model.equals("switch")) {
+                            break;
+                        }
+                        processOtherCommands(jobject);
+                        break;
+                    case "report":
+                        processOtherCommands(jobject);
+                        break;
+                    default:
+                        logger.error("Unknown Xiaomi gateway command: " + command);
                 }
-
-                if (command.equals("write_ack")) {
-                    continue;
-                }
-
-                if (command.equals("report") || command.equals("heartbeat")) {
-                    //report and non gateway heartbeat
-                    processOtherCommands(jobject);
-                    continue;
-                } else {
-                    logger.error("Unknown Xiaomi gateway command: " + command);
-                }
-
             }
         } catch (IOException e) {
             logger.error(e.toString());
@@ -662,7 +655,7 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
     }
 
     private String getKey() {
-        logger.info("Encrypting \"" + token + "\" with key \"" + key + "\"");
+        logger.debug("Encrypting \"" + token + "\" with key \"" + key + "\"");
         return EncryptionHelper.encrypt(token, key);
     }
 
