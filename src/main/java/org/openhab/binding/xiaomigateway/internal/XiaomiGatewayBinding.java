@@ -199,7 +199,7 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
                             token = jobject.get("token").getAsString();
                             break;
                         }
-                        if (model.equals("cube") || model.equals("switch") || model.equals("motion")) {
+                        if (model.equals("cube") || model.equals("switch")) {
                             break;
                         }
                         processOtherCommands(jobject);
@@ -408,7 +408,7 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
     private void processMotionEvent(String itemName, JsonObject jobject) {
         String data = jobject.get("data").getAsString();
         JsonObject jo = parser.parse(data).getAsJsonObject();
-        String stat = jo.get("status").getAsString().toLowerCase();
+        String stat = (jo.get("status") != null) ? jo.get("status").getAsString().toLowerCase() : "no_motion";
         State oldValue;
         try {
             oldValue = itemRegistry.getItem(itemName).getState();
