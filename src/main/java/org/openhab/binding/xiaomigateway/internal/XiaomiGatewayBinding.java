@@ -308,7 +308,7 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
         String event = getStatusEvent(jobject);
         boolean publish = false;
         if (isRotateCubeEvent(jobject)) {
-            event = "rotate";
+            event = isLeftRotate(jobject) ? "rotate_left" : "rotate_right";
         }
         logger.debug("XiaomiGateway: processing cube event " + event);
         switch (event) {
@@ -336,8 +336,11 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
             case "free_fall":
                 publish = type.endsWith(".free_fall");
                 break;
-            case "rotate":
-                logger.info("rotate is not supported yet!");
+            case "rotate_left":
+                publish = type.endsWith(".rotate_left");
+                break;
+            case "rotate_right":
+                publish = type.endsWith(".rotate_right");
                 break;
             default:
                 logger.error("Unknown cube event: " + event);
@@ -345,6 +348,17 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
 
         if (publish)
             eventPublisher.sendCommand(itemName, OnOffType.ON);
+    }
+
+    private boolean isLeftRotate(JsonObject jobject) {
+        try {
+            String data = jobject.get("data").getAsString();
+            JsonObject jo = parser.parse(data).getAsJsonObject();
+            return jobject.get("model").getAsString().equals("cube") && jo != null && jo.get("rotate") != null && jo.get("rotate").getAsString().startsWith("-");
+        } catch (Exception ex) {
+            logger.error(ex.toString());
+            return false;
+        }
     }
 
     private boolean isRotateCubeEvent(JsonObject jobject) {
@@ -702,7 +716,6 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
                 long color = rgb - (currentBrightness * 65536 * 256) + brightness.longValue() * 65536 * 256;
                 changeGatewayColor(color);
             }
-
             return;
         }
 

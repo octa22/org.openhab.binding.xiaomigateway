@@ -1,7 +1,7 @@
 # org.openhab.binding.xiaomigateway
 
 This binding brings Xiaomi Gateway Smart Home devices (Aqara) integration with OpenHAB1.x
-Currently only one gateway is supported and only getting sub device state/reading events confirmed to be working. 
+Currently only one gateway is supported and only getting sub device state/reading events confirmed to be working including the magic cube. 
 Controlling of gateway light works too including color and brightness change within OpenHAB.
 Unfortunately I have no switch to test controlling its state using write command, but write key generation based on gateway token seems to be implemented OK.
 
@@ -32,7 +32,10 @@ The binding detects a Xiaomi gateway on local network and lists all sub devices.
 ```
 
 sid is a sub device identificator used in item configuration file.
-possible values are: magnet, temperature, humidity, virtual_switch (button simulates ON/OFF switch), click, long_click, double_click
+possible sensor values are: magnet, motion, temperature, humidity
+possible button values are: virtual_switch (button simulates ON/OFF switch), click, long_click, double_click
+possible switch values are: click, double_click, both_click
+possible cube values are: flip90, flip180, move, tap_twice, shake_air, swing, alert, free_fall, rotate_left, rotate_right (ON command is received when an event fired)  
 
 #openhab.cfg
 If you want to control devices please supply a developer key (you can see it in Mi Home app when you enable developer mode)
