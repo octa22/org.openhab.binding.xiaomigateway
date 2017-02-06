@@ -583,6 +583,10 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
     protected void execute() {
         // the frequently executed code (polling) goes here ...
         // logger.debug("execute() method is called!");
+        if (!bindingsExist()) {
+            return;
+        }
+
         if (sid.equals("") || token.equals("")) {
             discoverGateways();
         }
