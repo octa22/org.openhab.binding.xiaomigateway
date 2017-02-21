@@ -565,6 +565,7 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
             socket.close();
         if (thread != null && thread.isAlive())
             thread.interrupt();
+        devicesList.clear();
 
         // deallocate resources here that are no longer needed and
         // should be reset when activating this binding again
