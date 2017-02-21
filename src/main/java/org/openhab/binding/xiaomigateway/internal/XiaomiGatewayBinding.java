@@ -29,6 +29,7 @@ import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.InetAddress;
 import java.net.MulticastSocket;
+import java.util.HashMap;
 import java.util.Map;
 
 
@@ -50,6 +51,9 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
     private MulticastSocket socket = null;
 
     private Thread thread;
+
+    //Smart device list
+    Map<String, String> devicesList = new HashMap<String, String>();
 
     //Configuration
     private String key = "";
@@ -174,7 +178,10 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
                 String sentence = new String(dgram.getData(), 0,
                         dgram.getLength());
 
-                logger.info("Xiaomi received packet: " + sentence);
+                if (sentence.contains("\"voltage\"") || sentence.contains("\"mid\""))
+                    logger.info("Xiaomi received packet: " + sentence);
+                else
+                    logger.debug("Xiaomi received packet: " + sentence);
 
                 JsonObject jobject = parser.parse(sentence).getAsJsonObject();
                 String command = jobject.get("cmd").getAsString();
@@ -403,7 +410,8 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
     private void listIds(JsonObject jobject) {
         String data = jobject.get("data").getAsString();
         JsonArray ja = parser.parse(data).getAsJsonArray();
-        logger.info("Discovered total of " + ja.size() + " Xiaomi smart devices");
+        if (devicesList.size() == 0)
+            logger.info("Discovered total of " + ja.size() + " Xiaomi smart devices");
         for (JsonElement je : ja) {
             requestRead(je.getAsString());
         }
@@ -412,7 +420,10 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
     private void listDevice(JsonObject jobject) {
         String sid = jobject.get("sid").getAsString();
         String model = jobject.get("model").getAsString();
-        logger.info("Detected Xiaomi smart device - sid: " + sid + " model: " + model);
+        if (!devicesList.containsKey(sid)) {
+            logger.info("Detected new Xiaomi smart device - sid: " + sid + " model: " + model);
+            devicesList.put(sid, model);
+        }
         if (model.equals("sensor_ht") || model.equals("motion") || model.equals("magnet")) {
             //read value
             processOtherCommands(jobject);
@@ -589,6 +600,8 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
 
         if (sid.equals("") || token.equals("")) {
             discoverGateways();
+        } else {
+            requestIdList();
         }
     }
 
