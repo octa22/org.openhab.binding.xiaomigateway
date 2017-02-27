@@ -526,10 +526,7 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
     }
 
     private Float formatValue(String value) {
-        if (value.length() == 4)
-            return Float.parseFloat(value.substring(0, 2) + "." + value.substring(2));
-        else
-            return Float.parseFloat(value);
+		return Float.parseFloat(value.substring(0, value.length() - 2) + "." + value.substring(2));	
     }
 
     /**
