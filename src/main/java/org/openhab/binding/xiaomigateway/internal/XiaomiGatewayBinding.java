@@ -230,55 +230,86 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
 
         for (final XiaomiGatewayBindingProvider provider : providers) {
             for (String itemName : provider.getItemNames()) {
-                String type = provider.getItemType(itemName);
-                if (!type.startsWith(sid))
-                    continue;
+                processEvent(provider, itemName, jobject);
+            }
 
-                if (type.endsWith("temperature") && isTemperatureEvent(jobject)) {
+        }
+    }
+
+    private void processEvent(XiaomiGatewayBindingProvider provider, String itemName, JsonObject jobject) {
+        String type = provider.getItemType(itemName);
+        if (!(type.startsWith(sid) && type.contains(".") ))
+            return;
+
+        String subType = type.split("\\.")[1];
+        switch(subType)
+        {
+            case "temperature":
+                if( isTemperatureEvent(jobject) ) {
                     logger.debug("XiaomiGateway: processing temperature event");
                     processTemperatureEvent(itemName, jobject);
                 }
-                if (type.endsWith("humidity") && isHumidityEvent(jobject)) {
+                break;
+            case "humidity":
+                if(isHumidityEvent(jobject)) {
                     logger.debug("XiaomiGateway: processing humidity event");
                     processHumidityEvent(itemName, jobject);
                 }
-                if (type.endsWith(".color") && getItemSid(type).equals(sid)) {
-                    logger.debug("XiaomiGateway: processing color event");
-                    processColorEvent(itemName, jobject);
-                }
-                if (type.endsWith(".brightness") && getItemSid(type).equals(sid)) {
-                    logger.debug("XiaomiGateway: processing brightness event");
-                    processColorEvent(itemName, jobject);
-                }
-                if (type.endsWith(".virtual_switch") && isButtonEvent(jobject, "click")) {
+                break;
+            case "color":
+                logger.debug("XiaomiGateway: processing color event");
+                processColorEvent(itemName, jobject);
+                break;
+            case "brightness":
+                logger.debug("XiaomiGateway: processing brightness event");
+                processColorEvent(itemName, jobject);
+                break;
+            case "virtual_switch":
+                if( isButtonEvent(jobject, "click") ) {
                     logger.debug("XiaomiGateway: processing virtual switch click event");
                     processVirtualSwitchEvent(itemName);
                 }
-                if (type.endsWith(".click") && isButtonEvent(jobject, "click")) {
+                break;
+            case "click":
+                if(isButtonEvent(jobject, "click")) {
                     logger.debug("XiaomiGateway: processing click event");
                     eventPublisher.sendCommand(itemName, OnOffType.ON);
                 }
-                if (type.endsWith(".double_click") && isButtonEvent(jobject, "double_click")) {
+                break;
+            case "double_click":
+                if(isButtonEvent(jobject, "double_click") ) {
                     logger.debug("XiaomiGateway: processing double click event");
                     eventPublisher.sendCommand(itemName, OnOffType.ON);
                 }
-                if (type.endsWith(".long_click") && isButtonEvent(jobject, "long_click_press")) {
+                break;
+            case "long_click":
+                if(  isButtonEvent(jobject, "long_click_press") ) {
                     logger.debug("XiaomiGateway: processing long click event");
                     eventPublisher.sendCommand(itemName, OnOffType.ON);
                 }
-                if (type.endsWith(".magnet") && isMagnetEvent(jobject)) {
+                break;
+            case "long_click_release":
+                if( isButtonEvent(jobject, "long_click_release")) {
+                    logger.debug("XiaomiGateway: processing long click release event");
+                    eventPublisher.sendCommand(itemName, OnOffType.ON);
+                }
+                break;
+            case "magnet":
+                if(isMagnetEvent(jobject)) {
                     logger.debug("XiaomiGateway: processing magnet event");
                     processMagnetEvent(itemName, jobject);
                 }
-                if (type.endsWith(".motion") && isMotionEvent(jobject)) {
+                break;
+            case "motion":
+                if(isMotionEvent(jobject)) {
                     logger.debug("XiaomiGateway: processing motion event");
                     processMotionEvent(itemName, jobject);
                 }
+                break;
+            default:
                 if (isCubeEvent(jobject)) {
                     processCubeEvent(itemName, type, jobject);
                 }
-            }
-
         }
     }
 
@@ -788,8 +819,7 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
     private String getItemSid(String itemName) {
         if (!itemName.contains("."))
             return "";
-        int pos = itemName.indexOf('.');
-        return itemName.substring(0, pos);
+        return itemName.split("\\.")[0];
     }
 
     private String getItemType(String itemName) {
