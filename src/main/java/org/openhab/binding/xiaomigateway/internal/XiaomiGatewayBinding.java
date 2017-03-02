@@ -179,9 +179,9 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
                         dgram.getLength());
 
                 if (sentence.contains("\"voltage\"") || sentence.contains("\"mid\""))
-                    logger.info("Xiaomi received packet: " + sentence);
+                    logger.info("Received packet: " + sentence);
                 else
-                    logger.debug("Xiaomi received packet: " + sentence);
+                    logger.debug("Received packet: " + sentence);
 
                 JsonObject jobject = parser.parse(sentence).getAsJsonObject();
                 String command = jobject.get("cmd").getAsString();
@@ -246,63 +246,63 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
         {
             case "temperature":
                 if( isTemperatureEvent(jobject) ) {
-                    logger.debug("XiaomiGateway: processing temperature event");
+                    logger.debug("Processing temperature event");
                     processTemperatureEvent(itemName, jobject);
                 }
                 break;
             case "humidity":
                 if(isHumidityEvent(jobject)) {
-                    logger.debug("XiaomiGateway: processing humidity event");
+                    logger.debug("Processing humidity event");
                     processHumidityEvent(itemName, jobject);
                 }
                 break;
             case "color":
-                logger.debug("XiaomiGateway: processing color event");
+                logger.debug("Processing color event");
                 processColorEvent(itemName, jobject);
                 break;
             case "brightness":
-                logger.debug("XiaomiGateway: processing brightness event");
+                logger.debug("Processing brightness event");
                 processColorEvent(itemName, jobject);
                 break;
             case "virtual_switch":
                 if( isButtonEvent(jobject, "click") ) {
-                    logger.debug("XiaomiGateway: processing virtual switch click event");
+                    logger.debug("Processing virtual switch click event");
                     processVirtualSwitchEvent(itemName);
                 }
                 break;
             case "click":
                 if(isButtonEvent(jobject, "click")) {
-                    logger.debug("XiaomiGateway: processing click event");
+                    logger.debug("Processing click event");
                     eventPublisher.sendCommand(itemName, OnOffType.ON);
                 }
                 break;
             case "double_click":
                 if(isButtonEvent(jobject, "double_click") ) {
-                    logger.debug("XiaomiGateway: processing double click event");
+                    logger.debug("Processing double click event");
                     eventPublisher.sendCommand(itemName, OnOffType.ON);
                 }
                 break;
             case "long_click":
                 if(  isButtonEvent(jobject, "long_click_press") ) {
-                    logger.debug("XiaomiGateway: processing long click event");
+                    logger.debug("Processing long click event");
                     eventPublisher.sendCommand(itemName, OnOffType.ON);
                 }
                 break;
             case "long_click_release":
                 if( isButtonEvent(jobject, "long_click_release")) {
-                    logger.debug("XiaomiGateway: processing long click release event");
+                    logger.debug("Processing long click release event");
                     eventPublisher.sendCommand(itemName, OnOffType.ON);
                 }
                 break;
             case "magnet":
                 if(isMagnetEvent(jobject)) {
-                    logger.debug("XiaomiGateway: processing magnet event");
+                    logger.debug("Processing magnet event");
                     processMagnetEvent(itemName, jobject);
                 }
                 break;
             case "motion":
                 if(isMotionEvent(jobject)) {
-                    logger.debug("XiaomiGateway: processing motion event");
+                    logger.debug("Processing motion event");
                     processMotionEvent(itemName, jobject);
                 }
                 break;
@@ -683,7 +683,7 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
             byte[] sendData = sendString.getBytes("UTF-8");
             InetAddress addr = InetAddress.getByName(gatewayIP);
             DatagramPacket sendPacket = new DatagramPacket(sendData, sendData.length, addr, dest_port);
-            logger.info("Sending to gateway: " + sid + " message: " + sendString);
+            logger.debug("Sending to gateway: " + sid + " message: " + sendString);
             socket.send(sendPacket);
         } catch (IOException e) {
             e.printStackTrace();
