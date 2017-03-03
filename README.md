@@ -52,6 +52,7 @@ xiaomigateway:startColor=
 Switch  XiaomiSwitch "Xiaomi button" { xiaomigateway="158d0000f9a538.virtual_switch" }
 Switch  XiaomiClick "Xiaomi button click" { xiaomigateway="158d0000f9axyz.click" }
 Switch  XiaomiLongClick "Xiaomi button long" { xiaomigateway="158d0000f9axyz.long_click" }
+Switch  XiaomiLongClickRelease "Xiaomi button long release" { xiaomigateway="158d0000f9axyz.long_click_release" }
 Switch  XiaomiDoubleClick "Xiaomi button double" { xiaomigateway="158d0000f9axyz.double_click" }
 Contact XiaomiContact "Xiaomi contact" { xiaomigateway="158d00010e4104.magnet" }
 Contact XiaomiMotion "Xiaomi motion" { xiaomigateway="158d00010e4105.motion" }
