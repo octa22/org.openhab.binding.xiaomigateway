@@ -225,8 +225,6 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
     }
 
     private void processOtherCommands(JsonObject jobject) {
-        //command report
-        String sid = jobject.get("sid").getAsString();
 
         for (final XiaomiGatewayBindingProvider provider : providers) {
             for (String itemName : provider.getItemNames()) {
@@ -238,7 +236,9 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
 
     private void processEvent(XiaomiGatewayBindingProvider provider, String itemName, JsonObject jobject) {
         String type = provider.getItemType(itemName);
-        if (!(type.startsWith(sid) && type.contains(".") ))
+        String eventSid = jobject.get("sid").getAsString();
+
+        if (!(type.startsWith(eventSid) && type.contains(".") ))
             return;
 
         String subType = type.split("\\.")[1];
