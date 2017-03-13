@@ -178,7 +178,7 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
                 String sentence = new String(dgram.getData(), 0,
                         dgram.getLength());
 
-                if (sentence.contains("\"voltage\"") || sentence.contains("\"mid\""))
+                if (sentence.contains("\"plug\"") || sentence.contains("\"voltage\"") || sentence.contains("\"mid\""))
                     logger.info("Received packet: " + sentence);
                 else
                     logger.debug("Received packet: " + sentence);
@@ -238,20 +238,19 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
         String type = provider.getItemType(itemName);
         String eventSid = jobject.get("sid").getAsString();
 
-        if (!(type.startsWith(eventSid) && type.contains(".") ))
+        if (!(type.startsWith(eventSid) && type.contains(".")))
             return;
 
         String subType = type.split("\\.")[1];
-        switch(subType)
-        {
+        switch (subType) {
             case "temperature":
-                if( isTemperatureEvent(jobject) ) {
+                if (isTemperatureEvent(jobject)) {
                     logger.debug("Processing temperature event");
                     processTemperatureEvent(itemName, jobject);
                 }
                 break;
             case "humidity":
-                if(isHumidityEvent(jobject)) {
+                if (isHumidityEvent(jobject)) {
                     logger.debug("Processing humidity event");
                     processHumidityEvent(itemName, jobject);
                 }
@@ -265,45 +264,57 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
                 processColorEvent(itemName, jobject);
                 break;
             case "virtual_switch":
-                if( isButtonEvent(jobject, "click") ) {
+                if (isButtonEvent(jobject, "click")) {
                     logger.debug("Processing virtual switch click event");
                     processVirtualSwitchEvent(itemName);
                 }
                 break;
             case "click":
-                if(isButtonEvent(jobject, "click")) {
+                if (isButtonEvent(jobject, "click")) {
                     logger.debug("Processing click event");
                     eventPublisher.sendCommand(itemName, OnOffType.ON);
                 }
                 break;
             case "double_click":
-                if(isButtonEvent(jobject, "double_click") ) {
+                if (isButtonEvent(jobject, "double_click")) {
                     logger.debug("Processing double click event");
                     eventPublisher.sendCommand(itemName, OnOffType.ON);
                 }
                 break;
             case "long_click":
-                if(  isButtonEvent(jobject, "long_click_press") ) {
+                if (isButtonEvent(jobject, "long_click_press")) {
                     logger.debug("Processing long click event");
                     eventPublisher.sendCommand(itemName, OnOffType.ON);
                 }
                 break;
             case "long_click_release":
-                if( isButtonEvent(jobject, "long_click_release")) {
+                if (isButtonEvent(jobject, "long_click_release")) {
                     logger.debug("Processing long click release event");
                     eventPublisher.sendCommand(itemName, OnOffType.ON);
                 }
                 break;
             case "magnet":
-                if(isMagnetEvent(jobject)) {
+                if (isMagnetEvent(jobject)) {
                     logger.debug("Processing magnet event");
                     processMagnetEvent(itemName, jobject);
                 }
                 break;
             case "motion":
-                if(isMotionEvent(jobject)) {
+                if (isMotionEvent(jobject)) {
                     logger.debug("Processing motion event");
                     processMotionEvent(itemName, jobject);
+                }
+                break;
+            case "plug":
+                if (isPlugEvent(jobject)) {
+                    logger.debug("Processing plug event");
+                    processPlugEvent(itemName, jobject);
+                }
+                break;
+            case "inuse":
+                if (isPlugEvent(jobject)) {
+                    logger.debug("Processing plug inuse event");
+                    processPlugInuseEvent(itemName, jobject);
                 }
                 break;
             default:
@@ -424,11 +435,15 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
     }
 
     private boolean isCubeEvent(JsonObject jobject) {
-        return jobject != null && !jobject.isJsonNull() && jobject.get("model").getAsString().equals("cube");
+        return jobject != null && jobject.has("model") && jobject.get("model").getAsString().equals("cube");
     }
 
     private boolean isMotionEvent(JsonObject jobject) {
-        return jobject != null && !jobject.isJsonNull() && jobject.get("model").getAsString().equals("motion");
+        return jobject != null && jobject.has("model") && jobject.get("model").getAsString().equals("motion");
+    }
+
+    private boolean isPlugEvent(JsonObject jobject) {
+        return jobject != null && jobject.has("model") && jobject.get("model").getAsString().equals("plug");
     }
 
     private void getGatewayInfo(JsonObject jobject) {
@@ -464,12 +479,52 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
     private void processMotionEvent(String itemName, JsonObject jobject) {
         String data = jobject.get("data").getAsString();
         JsonObject jo = parser.parse(data).getAsJsonObject();
-        String stat = (jo.get("status") != null) ? jo.get("status").getAsString().toLowerCase() : "no_motion";
+        String stat = (jo.has("status")) ? jo.get("status").getAsString().toLowerCase() : "no_motion";
         State oldValue;
         try {
             oldValue = itemRegistry.getItem(itemName).getState();
             State newValue = stat.equals("motion") ? OpenClosedType.OPEN : OpenClosedType.CLOSED;
             if (!newValue.equals(oldValue) || newValue.equals(OpenClosedType.OPEN))
+                eventPublisher.postUpdate(itemName, newValue);
+        } catch (ItemNotFoundException e) {
+            logger.error(e.toString());
+        }
+    }
+
+    private void processPlugEvent(String itemName, JsonObject jobject) {
+        String data = jobject.get("data").getAsString();
+        JsonObject jo = parser.parse(data).getAsJsonObject();
+        String stat = (jo.has("status")) ? jo.get("status").getAsString().toLowerCase() : "off";
+        State oldValue;
+        try {
+            oldValue = itemRegistry.getItem(itemName).getState();
+            State newValue = stat.equals("on") ? OnOffType.ON : OnOffType.OFF;
+            if (!newValue.equals(oldValue) || newValue.equals(OnOffType.ON))
+                eventPublisher.postUpdate(itemName, newValue);
+        } catch (ItemNotFoundException e) {
+            logger.error(e.toString());
+        }
+    }
+
+    private void processPlugInuseEvent(String itemName, JsonObject jobject) {
+        String data = jobject.get("data").getAsString();
+        JsonObject jo = parser.parse(data).getAsJsonObject();
+        State newValue;
+        if (jo.has("inuse") ) {
+            newValue = (jo.get("inuse").getAsString().equals("1")) ? OnOffType.ON : OnOffType.OFF;
+        } else {
+            if (jo.has("status") && jo.get("status").getAsString().toLowerCase().equals("off")) {
+                //If power is off, in use is off too
+                newValue = OnOffType.OFF;
+            }
+            else
+                return;
+        }
+
+        State oldValue;
+        try {
+            oldValue = itemRegistry.getItem(itemName).getState();
+            if (!newValue.equals(oldValue) || newValue.equals(OnOffType.ON))
                 eventPublisher.postUpdate(itemName, newValue);
         } catch (ItemNotFoundException e) {
             logger.error(e.toString());
@@ -557,7 +612,7 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
     }
 
     private Float formatValue(String value) {
-		return Float.parseFloat(value.substring(0, value.length() - 2) + "." + value.substring(2));	
+        return Float.parseFloat(value.substring(0, value.length() - 2) + "." + value.substring(2));
     }
 
     /**
@@ -740,8 +795,8 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
             logger.error("Only OnOff/HSB/Percent command types currently supported");
             return;
         }
-        if (!(itemType.contains("channel") || itemType.endsWith(".color") || itemType.endsWith(".brightness"))) {
-            //only channel items
+        if (!(itemType.contains("channel") || itemType.endsWith(".color") || itemType.endsWith(".brightness") || itemType.endsWith(".plug"))) {
+            //only channel/plug items
             return;
         }
 
@@ -765,7 +820,10 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
             return;
         }
 
-        if (itemType.endsWith(".channel_0") || itemType.endsWith(".channel_1")) {
+        if (itemType.endsWith(".plug")) {
+            String sid = getItemSid(itemType);
+            requestWrite(sid, new String[]{"status"}, new Object[]{command.toString().toLowerCase()});
+        } else if (itemType.endsWith(".channel_0") || itemType.endsWith(".channel_1")) {
             //86ctrl_neutral1/2
             String sid = getItemSid(itemType);
             String channel = getItemChannel(itemType);

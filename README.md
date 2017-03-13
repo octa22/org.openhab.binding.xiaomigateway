@@ -1,9 +1,18 @@
 # org.openhab.binding.xiaomigateway
 
 This binding brings Xiaomi Gateway Smart Home devices (Aqara) integration with OpenHAB1.x
-Currently only one gateway is supported and only getting sub device state/reading events confirmed to be working including the magic cube. 
-Controlling of gateway light works too including color and brightness change within OpenHAB.
-Unfortunately I have no switch to test controlling its state using write command, but write key generation based on gateway token seems to be implemented OK.
+Currently only one gateway is supported.
+
+Supported devices:
+- gateway light (including color and brightness change)
+- magnet sensor (door sensor)
+- motion sensor
+- temperature & humidity sensor
+- button (simple round switch)
+- plug (zigbee version, no reporting of power consumtion, only ON/OFF and if device in use)
+- magic cube (all events)
+
+Unfortunately I have no aqara switch to test controlling its state using write command, but write key generation based on gateway token seems to be implemented OK.
 
 Based on info found here: https://github.com/louisZL/lumi-gateway-local-api
 
@@ -61,6 +70,8 @@ Number  RoomHumidity "Humidity  [%.1f %%]" <humidity>	{ xiaomigateway="158d00011
 Switch  XiaomiGatewayLight "Gateway light" { xiaomigateway="f1b5299a55e5.color" }
 Color   XiaomiGatewayLightColor "Gateway light color" { xiaomigateway="f1b5299a55e5.color" }
 Dimmer  XiaomiGatewayBrightness "Gateway brightness" { xiaomigateway="f1b5299a55e5.brightness" }
+Switch  XiaomiPlug "Xiaomi zigbee plug" { xiaomigateway="158d00012944b3.plug" }
+Switch  XiaomiPlugInUse "Xiaomi zigbee plug in use" { xiaomigateway="158d00012944b3.inuse" }
 ```
 not tested, but should work - ___send ON command to these items to fire an event___
 ```
