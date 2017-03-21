@@ -199,6 +199,9 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
                         listDevice(jobject);
                         break;
                     case "write_ack":
+                        if(sentence.contains("\"error")) {
+                            logger.error(sentence);
+                        }
                         break;
                     case "heartbeat":
                         String model = jobject.get("model").getAsString();
@@ -857,26 +860,22 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
             return "";
         int pos = itemType.lastIndexOf('.');
         return itemType.substring(pos + 1);
-
     }
 
-    private String getItemChannel(String itemType) {
-        if (!itemType.contains("."))
-            return "";
-        int pos = itemType.indexOf('.');
-        int posLast = itemType.indexOf('.');
-        if (pos == posLast) {
-            return itemType.substring(pos + 1);
-        } else {
-            return itemType.substring(pos + 1, posLast - pos);
-        }
-
-    }
-
-    private String getItemSid(String itemName) {
+    private String getItemChannel(String itemName) {
         if (!itemName.contains("."))
             return "";
-        return itemName.split("\\.")[0];
+        String[] parts = itemName.split("\\.");
+        if (parts.length > 2)
+            return parts[1];
+        else
+            return parts[0];
+    }
+
+    private String getItemSid(String itemType) {
+        if (!itemType.contains("."))
+            return "";
+        return itemType.split("\\.")[0];
     }
 
     private String getItemType(String itemName) {

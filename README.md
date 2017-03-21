@@ -73,7 +73,8 @@ Dimmer  XiaomiGatewayBrightness "Gateway brightness" { xiaomigateway="f1b5299a55
 Switch  XiaomiPlug "Xiaomi zigbee plug" { xiaomigateway="158d00012944b3.plug" }
 Switch  XiaomiPlugInUse "Xiaomi zigbee plug in use" { xiaomigateway="158d00012944b3.inuse" }
 ```
-not tested, but should work - ___send ON command to these items to fire an event___
+not working yet, prepared for future use (not supported by the latest gateway firmware 1.4.1_143.0141) 
+___send ON command to these items to fire an event___
 ```
 Switch  XiaomiNatural0 "Xiaomi natural CH0" { xiaomigateway="158d0000f9abcd.channel_0" }
 Switch  XiaomiNatural1 "Xiaomi natural CH1" { xiaomigateway="158d0000f9abcd.channel_1" }
