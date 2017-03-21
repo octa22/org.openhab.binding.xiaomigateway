@@ -199,7 +199,7 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
                         listDevice(jobject);
                         break;
                     case "write_ack":
-                        if(sentence.contains("\"error")) {
+                        if (sentence.contains("\"error")) {
                             logger.error(sentence);
                         }
                         break;
@@ -244,8 +244,9 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
         if (!(type.startsWith(eventSid) && type.contains(".")))
             return;
 
-        String subType = type.split("\\.")[1];
-        switch (subType) {
+        String event = getItemEvent(type);
+        // type.split("\\.")[1];
+        switch (event) {
             case "temperature":
                 if (isTemperatureEvent(jobject)) {
                     logger.debug("Processing temperature event");
@@ -273,17 +274,25 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
                 }
                 break;
             case "click":
-                if (isButtonEvent(jobject, "click")) {
+                if (isButtonEvent(jobject, "click") || isSwitchEvent(jobject, type, "click")) {
                     logger.debug("Processing click event");
                     eventPublisher.sendCommand(itemName, OnOffType.ON);
                 }
+
                 break;
             case "double_click":
-                if (isButtonEvent(jobject, "double_click")) {
+                if (isButtonEvent(jobject, "double_click") || isSwitchEvent(jobject, type, "double_click")) {
                     logger.debug("Processing double click event");
                     eventPublisher.sendCommand(itemName, OnOffType.ON);
                 }
                 break;
+            case "both_click":
+                if (isDualSwitchEvent(jobject, type)) {
+                    logger.debug("Processing both click event");
+                    eventPublisher.sendCommand(itemName, OnOffType.ON);
+                }
+                break;
+
             case "long_click":
                 if (isButtonEvent(jobject, "long_click_press")) {
                     logger.debug("Processing long click event");
@@ -591,6 +600,36 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
         }
     }
 
+    private boolean isSwitchEvent(JsonObject jobject, String itemType, String click) {
+        try {
+            String data = jobject.get("data").getAsString();
+            JsonObject jo = parser.parse(data).getAsJsonObject();
+            if (jo == null || (!jo.has("channel_0") && !jo.has("channel_1")))
+                return false;
+            String model = jobject.get("model").getAsString();
+            String channel = getItemChannel(itemType);
+            return jobject != null && !jobject.isJsonNull() && (model.equals("86sw1") || model.equals("86sw2")) && jo.has(channel) && jo.get(channel).getAsString().equals(click);
+        } catch (Exception ex) {
+            logger.error(ex.toString());
+            return false;
+        }
+    }
+
+    private boolean isDualSwitchEvent(JsonObject jobject, String itemType) {
+        try {
+            String data = jobject.get("data").getAsString();
+            JsonObject jo = parser.parse(data).getAsJsonObject();
+            if (jo == null || !jo.has("dual_channel"))
+                return false;
+            String model = jobject.get("model").getAsString();
+            String channel = getItemChannel(itemType);
+            return jobject != null && !jobject.isJsonNull() && model.equals("86sw2") && jo.has(channel) && jo.get(channel).getAsString().equals("both_click");
+        } catch (Exception ex) {
+            logger.error(ex.toString());
+            return false;
+        }
+    }
+
     private boolean isTemperatureEvent(JsonObject jobject) {
         try {
             String data = jobject.get("data").getAsString();
@@ -797,7 +836,7 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
             logger.error("Only OnOff/HSB/Percent command types currently supported");
             return;
         }
-        if (!(itemType.contains("channel") || itemType.endsWith(".color") || itemType.endsWith(".brightness") || itemType.endsWith(".plug"))) {
+        if (!(itemType.endsWith(".color") || itemType.endsWith(".brightness") || itemType.endsWith(".plug"))) {
             //only channel/plug items
             return;
         }
@@ -825,7 +864,7 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
         if (itemType.endsWith(".plug")) {
             String sid = getItemSid(itemType);
             requestWrite(sid, new String[]{"status"}, new Object[]{command.toString().toLowerCase()});
-        } else if (itemType.endsWith(".channel_0") || itemType.endsWith(".channel_1")) {
+        /*} else if (itemType.endsWith(".channel_0") || itemType.endsWith(".channel_1")) {
             //86ctrl_neutral1/2
             String sid = getItemSid(itemType);
             String channel = getItemChannel(itemType);
@@ -835,7 +874,7 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
             String sid = getItemSid(itemType);
             String channel = getItemChannel(itemType);
             String event = getItemEvent(itemType);
-            requestWrite(sid, new String[]{channel}, new Object[]{event});
+            requestWrite(sid, new String[]{channel}, new Object[]{event});*/
         } else {
             if (!command.equals(OnOffType.OFF))
                 logger.error("Unsupported channel/event: " + itemType + " or command: " + command);

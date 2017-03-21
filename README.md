@@ -10,6 +10,7 @@ Supported devices:
 - temperature & humidity sensor
 - button (simple round switch)
 - plug (zigbee version, no reporting of power consumption, only ON/OFF and if device in use)
+- switch 86sw1/2 (no controlling, only getting events click, double click & both click)
 - magic cube (all events)
 
 Unfortunately I have no aqara switch to test controlling its state using write command, but write key generation based on gateway token seems to be implemented OK.
@@ -72,17 +73,18 @@ Color   XiaomiGatewayLightColor "Gateway light color" { xiaomigateway="f1b5299a5
 Dimmer  XiaomiGatewayBrightness "Gateway brightness" { xiaomigateway="f1b5299a55e5.brightness" }
 Switch  XiaomiPlug "Xiaomi zigbee plug" { xiaomigateway="158d00012944b3.plug" }
 Switch  XiaomiPlugInUse "Xiaomi zigbee plug in use" { xiaomigateway="158d00012944b3.inuse" }
+
+//only getting event values, no remote control
+Switch  XiaomiControl0 "Xiaomi CH0 click" { xiaomigateway="158d0000f9defg.channel_0.click" }
+Switch  XiaomiControl0D "Xiaomi CH0 double click" { xiaomigateway="158d0000f9defg.channel_0.double_click" }
+Switch  XiaomiControl1 "Xiaomi CH1 click" { xiaomigateway="158d0000f9defg.channel_1.click" }
+Switch  XiaomiControl1D "Xiaomi CH1 double click" { xiaomigateway="158d0000f9defg.channel_1.double_click" }
+Switch  XiaomiControlBoth "Xiaomi both click" { xiaomigateway="158d0000f9defg.dual_channel.both_click" }
 ```
-not working yet, prepared for future use (not supported by the latest gateway firmware 1.4.1_143.0141) 
-___send ON command to these items to fire an event___
+not working yet
 ```
 Switch  XiaomiNatural0 "Xiaomi natural CH0" { xiaomigateway="158d0000f9abcd.channel_0" }
 Switch  XiaomiNatural1 "Xiaomi natural CH1" { xiaomigateway="158d0000f9abcd.channel_1" }
-Switch  XiaomiControl0 "Xiaomi CH0 click" { xiaomigateway="158d0000f9defg.channel_0.click" }
-Switch  XiaomiControl0 "Xiaomi CH0 double click" { xiaomigateway="158d0000f9defg.channel_0.double_click" }
-Switch  XiaomiControl1 "Xiaomi CH1 click" { xiaomigateway="158d0000f9defg.channel_1.click" }
-Switch  XiaomiControl1 "Xiaomi CH1 double click" { xiaomigateway="158d0000f9defg.channel_1.double_click" }
-Switch  XiaomiControl1 "Xiaomi both click" { xiaomigateway="158d0000f9defg.both_channel.both_click" }
 ```
 
 #rule examples
