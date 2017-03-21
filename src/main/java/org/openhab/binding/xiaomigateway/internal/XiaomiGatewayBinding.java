@@ -154,8 +154,6 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
     }
 
     private void setupSocket() {
-
-
         try {
             socket = new MulticastSocket(dest_port); // must bind receive side
             socket.joinGroup(InetAddress.getByName(MCAST_ADDR));
@@ -185,6 +183,13 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
 
                 JsonObject jobject = parser.parse(sentence).getAsJsonObject();
                 String command = jobject.get("cmd").getAsString();
+
+                if(jobject.has("model") && jobject.has("sid"))
+                {
+                    String newId = jobject.get("sid").getAsString();
+                    String model = jobject.get("model").getAsString();
+                    addDevice(newId, model);
+                }
 
                 switch (command) {
                     case "iam":
@@ -224,7 +229,13 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
                 logger.error(e.toString());
             }
         }
+    }
 
+    private void addDevice(String newId, String model) {
+        if(!devicesList.containsKey(newId)) {
+            logger.info("Detected new Xiaomi smart device - sid: " + newId + " model: " + model);
+            devicesList.put(newId, model);
+        }
     }
 
     private void processOtherCommands(JsonObject jobject) {
@@ -476,12 +487,9 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
     }
 
     private void listDevice(JsonObject jobject) {
-        String sid = jobject.get("sid").getAsString();
+        String newId = jobject.get("sid").getAsString();
         String model = jobject.get("model").getAsString();
-        if (!devicesList.containsKey(sid)) {
-            logger.info("Detected new Xiaomi smart device - sid: " + sid + " model: " + model);
-            devicesList.put(sid, model);
-        }
+        addDevice(newId, model);
         if (model.equals("sensor_ht") || model.equals("motion") || model.equals("magnet")) {
             //read value
             processOtherCommands(jobject);
@@ -725,8 +733,6 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
 
         if (sid.equals("") || token.equals("")) {
             discoverGateways();
-        } else {
-            requestIdList();
         }
     }
 
