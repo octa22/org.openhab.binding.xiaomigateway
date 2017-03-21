@@ -9,7 +9,7 @@ Supported devices:
 - motion sensor
 - temperature & humidity sensor
 - button (simple round switch)
-- plug (zigbee version, no reporting of power consumtion, only ON/OFF and if device in use)
+- plug (zigbee version, no reporting of power consumption, only ON/OFF and if device in use)
 - magic cube (all events)
 
 Unfortunately I have no aqara switch to test controlling its state using write command, but write key generation based on gateway token seems to be implemented OK.
