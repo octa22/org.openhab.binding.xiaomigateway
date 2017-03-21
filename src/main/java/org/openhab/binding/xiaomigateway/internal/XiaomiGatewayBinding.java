@@ -178,7 +178,7 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
                 String sentence = new String(dgram.getData(), 0,
                         dgram.getLength());
 
-                if (sentence.contains("\"plug\"") || sentence.contains("\"voltage\"") || sentence.contains("\"mid\""))
+                if (sentence.contains("\"voltage\"") || sentence.contains("\"mid\""))
                     logger.info("Received packet: " + sentence);
                 else
                     logger.debug("Received packet: " + sentence);
@@ -510,14 +510,13 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
         String data = jobject.get("data").getAsString();
         JsonObject jo = parser.parse(data).getAsJsonObject();
         State newValue;
-        if (jo.has("inuse") ) {
+        if (jo.has("inuse")) {
             newValue = (jo.get("inuse").getAsString().equals("1")) ? OnOffType.ON : OnOffType.OFF;
         } else {
             if (jo.has("status") && jo.get("status").getAsString().toLowerCase().equals("off")) {
                 //If power is off, in use is off too
                 newValue = OnOffType.OFF;
-            }
-            else
+            } else
                 return;
         }
 
