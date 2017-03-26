@@ -203,6 +203,10 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
                     case "read_ack":
                         listDevice(jobject);
                         break;
+                    case "write":
+                        logger.error("Received write command which is designed for the gateway. Are you sure you have the right developer key?");
+                        logger.error(sentence);
+                        break;
                     case "write_ack":
                         if (sentence.contains("\"error")) {
                             logger.error(sentence);
