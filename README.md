@@ -9,11 +9,9 @@ Supported devices:
 - motion sensor
 - temperature & humidity sensor
 - button (simple round switch)
-- plug (zigbee version, no reporting of power consumption, only ON/OFF and if device in use)
+- plug (zigbee version, reporting of power consumed, power load, ON/OFF and if device in use)
 - switch 86sw1/2 (no controlling, only getting events click, double click & both click)
 - magic cube (all events)
-
-Unfortunately I have no aqara switch to test controlling its state using write command, but write key generation based on gateway token seems to be implemented OK.
 
 Based on info found here: https://github.com/louisZL/lumi-gateway-local-api
 
@@ -46,6 +44,7 @@ possible sensor values are: magnet, motion, temperature, humidity
 possible button values are: virtual_switch (button simulates ON/OFF switch), click, long_click, double_click
 possible switch values are: click, double_click, both_click
 possible cube values are: flip90, flip180, move, tap_twice, shake_air, swing, alert, free_fall, rotate_left, rotate_right (ON command is received when an event fired)  
+possible plug values are: plug, inuse, power_consumed, load_power
 
 #openhab.cfg
 If you want to control devices please supply a developer key (you can see it in Mi Home app when you enable developer mode)
@@ -73,6 +72,9 @@ Color   XiaomiGatewayLightColor "Gateway light color" { xiaomigateway="f1b5299a5
 Dimmer  XiaomiGatewayBrightness "Gateway brightness" { xiaomigateway="f1b5299a55e5.brightness" }
 Switch  XiaomiPlug "Xiaomi zigbee plug" { xiaomigateway="158d00012944b3.plug" }
 Switch  XiaomiPlugInUse "Xiaomi zigbee plug in use" { xiaomigateway="158d00012944b3.inuse" }
+Number  XiaomiPlugConsumed "Xiaomi zigbee plug consumed [%.0f Wh]" { xiaomigateway="158d00012944b3.power_consumed" }
+Number  XiaomiPlugLoad "Xiaomi zigbee plug load [%.0f W]" { xiaomigateway="158d00012944b3.load_power" }
+
 
 //only getting event values, no remote control
 Switch  XiaomiControl0 "Xiaomi CH0 click" { xiaomigateway="158d0000f9defg.channel_0.click" }

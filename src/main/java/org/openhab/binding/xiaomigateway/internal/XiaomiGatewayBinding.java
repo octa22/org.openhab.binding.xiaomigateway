@@ -176,16 +176,16 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
                 String sentence = new String(dgram.getData(), 0,
                         dgram.getLength());
 
-                if (sentence.contains("\"voltage\"") || sentence.contains("\"mid\""))
+                if (sentence.contains("\\\"voltage\\\"") || sentence.contains("\\\"mid\\\""))
                     logger.info("Received packet: " + sentence);
                 else
                     logger.debug("Received packet: " + sentence);
 
+
                 JsonObject jobject = parser.parse(sentence).getAsJsonObject();
                 String command = jobject.get("cmd").getAsString();
 
-                if(jobject.has("model") && jobject.has("sid"))
-                {
+                if (jobject.has("model") && jobject.has("sid")) {
                     String newId = jobject.get("sid").getAsString();
                     String model = jobject.get("model").getAsString();
                     addDevice(newId, model);
@@ -236,7 +236,7 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
     }
 
     private void addDevice(String newId, String model) {
-        if(!devicesList.containsKey(newId)) {
+        if (!devicesList.containsKey(newId)) {
             logger.info("Detected new Xiaomi smart device - sid: " + newId + " model: " + model);
             devicesList.put(newId, model);
         }
@@ -342,6 +342,18 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
                 if (isPlugEvent(jobject)) {
                     logger.debug("Processing plug inuse event");
                     processPlugInuseEvent(itemName, jobject);
+                }
+                break;
+            case "power_consumed":
+                if (isPlugEvent(jobject)) {
+                    logger.debug("Processing plug power_consumed event");
+                    processPlugPowerConsumedEvent(itemName, jobject);
+                }
+                break;
+            case "load_power":
+                if (isPlugEvent(jobject)) {
+                    logger.debug("Processing plug load_power event");
+                    processPlugLoadPowerEvent(itemName, jobject);
                 }
                 break;
             default:
@@ -528,6 +540,38 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
         } catch (ItemNotFoundException e) {
             logger.error(e.toString());
         }
+    }
+
+    private void processPlugPowerConsumedEvent(String itemName, JsonObject jobject) {
+        processPlugPowerEvent(itemName, jobject, "power_consumed");
+    }
+
+    private void processPlugLoadPowerEvent(String itemName, JsonObject jobject) {
+        processPlugPowerEvent(itemName, jobject, "load_power");
+    }
+
+    private void processPlugPowerEvent(String itemName, JsonObject jobject, String event) {
+        String data = jobject.get("data").getAsString();
+        JsonObject jo = parser.parse(data).getAsJsonObject();
+        State newValue;
+        State oldValue;
+        if (jo.has(event)) {
+            newValue = new DecimalType(jo.get(event).getAsInt());
+        } else {
+            if (jo.has("status") && jo.get("status").getAsString().toLowerCase().equals("off") && event.equals("load_power")) {
+                //if status is off then power consumption is 0
+                newValue = new DecimalType(0);
+            } else
+                return;
+        }
+        try {
+            oldValue = itemRegistry.getItem(itemName).getState();
+            if (!newValue.equals(oldValue))
+                eventPublisher.postUpdate(itemName, newValue);
+        } catch (ItemNotFoundException e) {
+            logger.error(e.toString());
+        }
+
     }
 
     private void processPlugInuseEvent(String itemName, JsonObject jobject) {
