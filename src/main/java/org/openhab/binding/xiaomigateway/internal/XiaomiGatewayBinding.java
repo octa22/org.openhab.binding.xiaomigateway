@@ -356,6 +356,11 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
                     processPlugLoadPowerEvent(itemName, jobject);
                 }
                 break;
+            case "voltage":
+                if (hasVoltage(jobject)) {
+                    logger.debug("Processing voltage event");
+                    processVoltageEvent(itemName, jobject);
+                }
             default:
                 if (isCubeEvent(jobject)) {
                     processCubeEvent(itemName, type, jobject);
@@ -485,6 +490,17 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
         return jobject != null && jobject.has("model") && jobject.get("model").getAsString().equals("plug");
     }
 
+    private boolean hasVoltage(JsonObject jobject) {
+        if( jobject != null && jobject.has("data")) {
+            String data = jobject.get("data").getAsString();
+            JsonObject jo = parser.parse(data).getAsJsonObject();
+            if( jo.has("voltage")) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     private void getGatewayInfo(JsonObject jobject) {
         sid = jobject.get("sid").getAsString();
         dest_port = jobject.get("port").getAsInt();
@@ -521,6 +537,19 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
             oldValue = itemRegistry.getItem(itemName).getState();
             State newValue = stat.equals("motion") ? OpenClosedType.OPEN : OpenClosedType.CLOSED;
             if (!newValue.equals(oldValue) || newValue.equals(OpenClosedType.OPEN))
+                eventPublisher.postUpdate(itemName, newValue);
+        } catch (ItemNotFoundException e) {
+            logger.error(e.toString());
+        }
+    }
+
+    private void processVoltageEvent(String itemName, JsonObject jobject) {
+        String data = jobject.get("data").getAsString();
+        JsonObject jo = parser.parse(data).getAsJsonObject();
+        State newValue = (jo.has("voltage")) ? new DecimalType(jo.get("voltage").getAsInt()) : new DecimalType(0);
+        try {
+            State oldValue = itemRegistry.getItem(itemName).getState();
+            if (!newValue.equals(oldValue) )
                 eventPublisher.postUpdate(itemName, newValue);
         } catch (ItemNotFoundException e) {
             logger.error(e.toString());

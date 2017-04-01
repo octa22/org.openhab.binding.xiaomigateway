@@ -40,10 +40,10 @@ The binding detects a Xiaomi gateway on local network and lists all sub devices.
 ```
 
 sid is a sub device identificator used in item configuration file.
-possible sensor values are: magnet, motion, temperature, humidity
-possible button values are: virtual_switch (button simulates ON/OFF switch), click, long_click, double_click
-possible switch values are: click, double_click, both_click
-possible cube values are: flip90, flip180, move, tap_twice, shake_air, swing, alert, free_fall, rotate_left, rotate_right (ON command is received when an event fired)  
+possible sensor values are: magnet, motion, temperature, humidity, voltage
+possible button values are: virtual_switch (button simulates ON/OFF switch), click, long_click, double_click, voltage
+possible switch values are: click, double_click, both_click, voltage
+possible cube values are: flip90, flip180, move, tap_twice, shake_air, swing, alert, free_fall, rotate_left, rotate_right, voltage (ON command is received when an event fired)  
 possible plug values are: plug, inuse, power_consumed, load_power
 
 #openhab.cfg
@@ -67,6 +67,7 @@ Contact XiaomiContact "Xiaomi contact" { xiaomigateway="158d00010e4104.magnet" }
 Contact XiaomiMotion "Xiaomi motion" { xiaomigateway="158d00010e4105.motion" }
 Number  RoomTemperature "Temperature  [%.1f °C]" <temperature>	{ xiaomigateway="158d0001182814.temperature" }
 Number  RoomHumidity "Humidity  [%.1f %%]" <humidity>	{ xiaomigateway="158d0001182814.humidity" }
+Number  RoomSensorVoltage "Sensor voltage [%.0f mV]" { xiaomigateway="158d0001182814.voltage" }
 Switch  XiaomiGatewayLight "Gateway light" { xiaomigateway="f1b5299a55e5.color" }
 Color   XiaomiGatewayLightColor "Gateway light color" { xiaomigateway="f1b5299a55e5.color" }
 Dimmer  XiaomiGatewayBrightness "Gateway brightness" { xiaomigateway="f1b5299a55e5.brightness" }
