@@ -62,6 +62,7 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
     private String sid = "";
     private String token = "";
     private long rgb = 0;
+    private int illumination = 0;
     private long startColor = 1677786880L; //green
 
     //Gson parser
@@ -176,7 +177,7 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
                 String sentence = new String(dgram.getData(), 0,
                         dgram.getLength());
 
-                if (sentence.contains("\\\"voltage\\\"") || sentence.contains("\\\"mid\\\""))
+                if (sentence.contains("\\\"mid\\\""))
                     logger.info("Received packet: " + sentence);
                 else
                     logger.debug("Received packet: " + sentence);
@@ -194,6 +195,7 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
                 switch (command) {
                     case "iam":
                         getGatewayInfo(jobject);
+                        requestRead(sid);
                         requestIdList();
                         break;
                     case "get_id_list_ack":
@@ -224,6 +226,10 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
                         processOtherCommands(jobject);
                         break;
                     case "report":
+                        model = jobject.get("model").getAsString();
+                        if (model.equals("gateway")) {
+                            logger.info(sentence);
+                        }
                         processOtherCommands(jobject);
                         break;
                     default:
@@ -260,7 +266,6 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
             return;
 
         String event = getItemEvent(type);
-        // type.split("\\.")[1];
         switch (event) {
             case "temperature":
                 if (isTemperatureEvent(jobject)) {
@@ -275,8 +280,16 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
                 }
                 break;
             case "color":
-                logger.debug("Processing color event");
-                processColorEvent(itemName, jobject);
+                if (isGatewayEvent(jobject)) {
+                    logger.debug("Processing color event");
+                    processColorEvent(itemName, jobject);
+                }
+                break;
+            case "illumination":
+                if (isGatewayEvent(jobject)) {
+                    logger.debug("Processing illumination event");
+                    processIlluminationEvent(itemName, jobject);
+                }
                 break;
             case "brightness":
                 logger.debug("Processing brightness event");
@@ -372,11 +385,11 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
         try {
             String data = jobject.get("data").getAsString();
             JsonObject jo = parser.parse(data).getAsJsonObject();
-            if (jo == null || jo.get("rgb") == null)
+            if (jo == null || !jo.has("rgb"))
                 return;
             rgb = jo.get("rgb").getAsLong();
             State oldValue = itemRegistry.getItem(itemName).getState();
-            State newValue = oldValue;
+            State newValue;
             if (oldValue instanceof OnOffType) {
                 newValue = rgb > 0 ? OnOffType.ON : OnOffType.OFF;
             } else if (oldValue instanceof HSBType) {
@@ -390,6 +403,22 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
                 newValue = new PercentType((int) br);
             }
 
+            if (!newValue.equals(oldValue))
+                eventPublisher.postUpdate(itemName, newValue);
+        } catch (Exception ex) {
+            logger.error(ex.toString());
+        }
+    }
+
+    private void processIlluminationEvent(String itemName, JsonObject jobject) {
+        try {
+            String data = jobject.get("data").getAsString();
+            JsonObject jo = parser.parse(data).getAsJsonObject();
+            if (jo == null || !jo.has("illumination"))
+                return;
+            illumination = jo.get("illumination").getAsInt();
+            State oldValue = itemRegistry.getItem(itemName).getState();
+            State newValue = new DecimalType(illumination);
             if (!newValue.equals(oldValue))
                 eventPublisher.postUpdate(itemName, newValue);
         } catch (Exception ex) {
@@ -469,7 +498,7 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
         try {
             String data = jobject.get("data").getAsString();
             JsonObject jo = parser.parse(data).getAsJsonObject();
-            if (jo == null || jo.get("status") == null)
+            if (jo == null || !jo.has("status"))
                 return null;
             return jo.get("status").getAsString();
         } catch (Exception ex) {
@@ -478,23 +507,27 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
         }
     }
 
+    private boolean checkModel(JsonObject jobject, String model) {
+        return jobject != null && jobject.has("model") && jobject.get("model").getAsString().equals(model);
+    }
+
     private boolean isCubeEvent(JsonObject jobject) {
-        return jobject != null && jobject.has("model") && jobject.get("model").getAsString().equals("cube");
+        return checkModel(jobject, "cube");
     }
 
     private boolean isMotionEvent(JsonObject jobject) {
-        return jobject != null && jobject.has("model") && jobject.get("model").getAsString().equals("motion");
+        return checkModel(jobject, "motion");
     }
 
     private boolean isPlugEvent(JsonObject jobject) {
-        return jobject != null && jobject.has("model") && jobject.get("model").getAsString().equals("plug");
+        return checkModel(jobject, "plug");
     }
 
     private boolean hasVoltage(JsonObject jobject) {
-        if( jobject != null && jobject.has("data")) {
+        if (jobject != null && jobject.has("data")) {
             String data = jobject.get("data").getAsString();
             JsonObject jo = parser.parse(data).getAsJsonObject();
-            if( jo.has("voltage")) {
+            if (jo.has("voltage")) {
                 return true;
             }
         }
@@ -513,6 +546,7 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
         JsonArray ja = parser.parse(data).getAsJsonArray();
         if (devicesList.size() == 0)
             logger.info("Discovered total of " + ja.size() + " Xiaomi smart devices");
+        requestRead(sid);
         for (JsonElement je : ja) {
             requestRead(je.getAsString());
         }
@@ -522,7 +556,7 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
         String newId = jobject.get("sid").getAsString();
         String model = jobject.get("model").getAsString();
         addDevice(newId, model);
-        if (model.equals("sensor_ht") || model.equals("motion") || model.equals("magnet")) {
+        if (model.equals("gateway") || model.equals("sensor_ht") || model.equals("motion") || model.equals("magnet") || model.equals("plug")) {
             //read value
             processOtherCommands(jobject);
         }
@@ -549,7 +583,7 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
         State newValue = (jo.has("voltage")) ? new DecimalType(jo.get("voltage").getAsInt()) : new DecimalType(0);
         try {
             State oldValue = itemRegistry.getItem(itemName).getState();
-            if (!newValue.equals(oldValue) )
+            if (!newValue.equals(oldValue))
                 eventPublisher.postUpdate(itemName, newValue);
         } catch (ItemNotFoundException e) {
             logger.error(e.toString());
@@ -669,16 +703,20 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
     }
 
     private boolean isMagnetEvent(JsonObject jobject) {
-        return jobject != null && !jobject.isJsonNull() && jobject.get("model").getAsString().equals("magnet");
+        return checkModel(jobject, "magnet");
+    }
+
+    private boolean isGatewayEvent(JsonObject jobject) {
+        return checkModel(jobject, "gateway");
     }
 
     private boolean isButtonEvent(JsonObject jobject, String click) {
         try {
             String data = jobject.get("data").getAsString();
             JsonObject jo = parser.parse(data).getAsJsonObject();
-            if (jo == null || jo.get("status") == null)
+            if (jo == null || !jo.has("status"))
                 return false;
-            return jobject != null && !jobject.isJsonNull() && jobject.get("model").getAsString().equals("switch") && jo.get("status").getAsString().equals(click);
+            return jobject != null && jobject.has("model") && jobject.get("model").getAsString().equals("switch") && jo.get("status").getAsString().equals(click);
         } catch (Exception ex) {
             logger.error(ex.toString());
             return false;
@@ -691,9 +729,8 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
             JsonObject jo = parser.parse(data).getAsJsonObject();
             if (jo == null || (!jo.has("channel_0") && !jo.has("channel_1")))
                 return false;
-            String model = jobject.get("model").getAsString();
             String channel = getItemChannel(itemType);
-            return jobject != null && !jobject.isJsonNull() && (model.equals("86sw1") || model.equals("86sw2")) && jo.has(channel) && jo.get(channel).getAsString().equals(click);
+            return (checkModel(jobject, "86sw1") || checkModel(jobject, "86sw2")) && jo.has(channel) && jo.get(channel).getAsString().equals(click);
         } catch (Exception ex) {
             logger.error(ex.toString());
             return false;
@@ -706,9 +743,8 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
             JsonObject jo = parser.parse(data).getAsJsonObject();
             if (jo == null || !jo.has("dual_channel"))
                 return false;
-            String model = jobject.get("model").getAsString();
             String channel = getItemChannel(itemType);
-            return jobject != null && !jobject.isJsonNull() && model.equals("86sw2") && jo.has(channel) && jo.get(channel).getAsString().equals("both_click");
+            return checkModel(jobject, "86sw2") && jo.has(channel) && jo.get(channel).getAsString().equals("both_click");
         } catch (Exception ex) {
             logger.error(ex.toString());
             return false;
@@ -719,7 +755,7 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
         try {
             String data = jobject.get("data").getAsString();
             JsonObject jo = parser.parse(data).getAsJsonObject();
-            return jobject != null && !jobject.isJsonNull() && jobject.get("model").getAsString().equals("sensor_ht") && jo.get("temperature") != null;
+            return checkModel(jobject, "sensor_ht") && jo.has("temperature");
         } catch (Exception ex) {
             logger.error(ex.toString());
             return false;
@@ -730,7 +766,7 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
         try {
             String data = jobject.get("data").getAsString();
             JsonObject jo = parser.parse(data).getAsJsonObject();
-            return jobject != null && !jobject.isJsonNull() && jobject.get("model").getAsString().equals("sensor_ht") && jo.get("humidity") != null;
+            return checkModel(jobject, "sensor_ht") && jo.has("humidity");
         } catch (Exception ex) {
             logger.error(ex.toString());
             return false;

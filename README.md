@@ -69,6 +69,7 @@ Number  RoomTemperature "Temperature  [%.1f °C]" <temperature>	{ xiaomigateway=
 Number  RoomHumidity "Humidity  [%.1f %%]" <humidity>	{ xiaomigateway="158d0001182814.humidity" }
 Number  RoomSensorVoltage "Sensor voltage [%.0f mV]" { xiaomigateway="158d0001182814.voltage" }
 Switch  XiaomiGatewayLight "Gateway light" { xiaomigateway="f1b5299a55e5.color" }
+Switch  XiaomiGatewayIllumination "Gateway illumination [%d]" { xiaomigateway="f1b5299a55e5.illumination" }
 Color   XiaomiGatewayLightColor "Gateway light color" { xiaomigateway="f1b5299a55e5.color" }
 Dimmer  XiaomiGatewayBrightness "Gateway brightness" { xiaomigateway="f1b5299a55e5.brightness" }
 Switch  XiaomiPlug "Xiaomi zigbee plug" { xiaomigateway="158d00012944b3.plug" }
