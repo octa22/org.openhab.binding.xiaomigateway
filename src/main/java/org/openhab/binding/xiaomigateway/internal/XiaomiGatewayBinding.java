@@ -774,7 +774,12 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
     }
 
     private Float formatValue(String value) {
-        return Float.parseFloat(value.substring(0, value.length() - 2) + "." + value.substring(2));
+        if( value.length() > 1) {
+            return Float.parseFloat(value.substring(0, value.length() - 2) + "." + value.substring(2));
+        }
+        else {
+            return Float.parseFloat(value);
+        }
     }
 
     /**
@@ -846,6 +851,14 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
 
         if (sid.equals("") || token.equals("")) {
             discoverGateways();
+        } else {
+            updateDevicesStatus();
+        }
+    }
+
+    private void updateDevicesStatus() {
+        for (String id : devicesList.keySet()) {
+            requestRead(id);
         }
     }
 
