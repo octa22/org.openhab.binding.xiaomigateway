@@ -227,9 +227,6 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
                         break;
                     case "report":
                         model = jobject.get("model").getAsString();
-                        if (model.equals("gateway")) {
-                            logger.info(sentence);
-                        }
                         processOtherCommands(jobject);
                         break;
                     default:
