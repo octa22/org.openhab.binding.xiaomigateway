@@ -686,17 +686,25 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
     }
 
     private void processTemperatureEvent(String itemName, JsonObject jobject) {
-        String data = jobject.get("data").getAsString();
-        JsonObject jo = parser.parse(data).getAsJsonObject();
-        Float temp = formatValue(jo.get("temperature").getAsString());
-        eventPublisher.postUpdate(itemName, new DecimalType(temp));
+        processSensorHTEvent(itemName, jobject, "temperature");
     }
 
     private void processHumidityEvent(String itemName, JsonObject jobject) {
+        processSensorHTEvent(itemName, jobject, "humidity");
+    }
+
+    private void processSensorHTEvent(String itemName, JsonObject jobject, String sensor) {
         String data = jobject.get("data").getAsString();
         JsonObject jo = parser.parse(data).getAsJsonObject();
-        Float hum = formatValue(jo.get("humidity").getAsString());
-        eventPublisher.postUpdate(itemName, new DecimalType(hum));
+        Float val = formatValue(jo.get(sensor).getAsString());
+        try {
+            State oldValue = itemRegistry.getItem(itemName).getState();
+            State newValue = new DecimalType(val);
+            if (!newValue.equals(oldValue))
+                eventPublisher.postUpdate(itemName, newValue);
+        } catch (ItemNotFoundException e) {
+            logger.error(e.toString());
+        }
     }
 
     private boolean isMagnetEvent(JsonObject jobject) {
