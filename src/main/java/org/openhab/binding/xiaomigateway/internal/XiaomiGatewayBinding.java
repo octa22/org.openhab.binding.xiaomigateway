@@ -15,8 +15,11 @@ import com.google.gson.JsonParser;
 import org.apache.commons.lang.StringUtils;
 import org.openhab.binding.xiaomigateway.XiaomiGatewayBindingProvider;
 import org.openhab.core.binding.AbstractActiveBinding;
+import org.openhab.core.items.Item;
 import org.openhab.core.items.ItemNotFoundException;
 import org.openhab.core.items.ItemRegistry;
+import org.openhab.core.library.items.ColorItem;
+import org.openhab.core.library.items.SwitchItem;
 import org.openhab.core.library.types.*;
 import org.openhab.core.types.Command;
 import org.openhab.core.types.State;
@@ -226,7 +229,7 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
                         processOtherCommands(jobject);
                         break;
                     case "report":
-                        model = jobject.get("model").getAsString();
+                        //model = jobject.get("model").getAsString();
                         processOtherCommands(jobject);
                         break;
                     default:
@@ -258,6 +261,7 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
     private void processEvent(XiaomiGatewayBindingProvider provider, String itemName, JsonObject jobject) {
         String type = provider.getItemType(itemName);
         String eventSid = jobject.get("sid").getAsString();
+        Item item = provider.getItem(itemName);
 
         if (!(type.startsWith(eventSid) && type.contains(".")))
             return;
@@ -279,7 +283,7 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
             case "color":
                 if (isGatewayEvent(jobject)) {
                     logger.debug("Processing color event");
-                    processColorEvent(itemName, jobject);
+                    processColorEvent(item, jobject);
                 }
                 break;
             case "illumination":
@@ -290,7 +294,7 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
                 break;
             case "brightness":
                 logger.debug("Processing brightness event");
-                processColorEvent(itemName, jobject);
+                processColorEvent(item, jobject);
                 break;
             case "virtual_switch":
                 if (isButtonEvent(jobject, "click")) {
@@ -378,8 +382,9 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
         }
     }
 
-    private void processColorEvent(String itemName, JsonObject jobject) {
+    private void processColorEvent(Item item, JsonObject jobject) {
         try {
+            String itemName = item.getName();
             String data = jobject.get("data").getAsString();
             JsonObject jo = parser.parse(data).getAsJsonObject();
             if (jo == null || !jo.has("rgb"))
@@ -387,9 +392,9 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
             rgb = jo.get("rgb").getAsLong();
             State oldValue = itemRegistry.getItem(itemName).getState();
             State newValue;
-            if (oldValue instanceof OnOffType) {
+            if (item instanceof SwitchItem) {
                 newValue = rgb > 0 ? OnOffType.ON : OnOffType.OFF;
-            } else if (oldValue instanceof HSBType) {
+            } else if (item instanceof ColorItem) {
                 //HSBType
                 long br = rgb / 65536 / 256;
                 Color color = new Color((int) (rgb - (br * 65536 * 256)));
