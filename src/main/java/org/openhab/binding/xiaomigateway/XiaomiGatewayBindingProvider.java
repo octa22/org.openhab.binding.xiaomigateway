@@ -9,7 +9,6 @@
 package org.openhab.binding.xiaomigateway;
 
 import org.openhab.core.binding.BindingProvider;
-import org.openhab.core.items.Item;
 
 /**
  * @author Ondrej Pecta
@@ -18,5 +17,4 @@ import org.openhab.core.items.Item;
 public interface XiaomiGatewayBindingProvider extends BindingProvider {
 
     String getItemType(String itemName);
-    Item getItem(String itemName);
 }

@@ -47,18 +47,13 @@ public class XiaomiGatewayGenericBindingProvider extends AbstractGenericBindingP
 		return config != null ? (config.getType()) : null;
 	}
 
-	public Item getItem(String itemName) {
-		final XiaomiGatewayBindingConfig config = (XiaomiGatewayBindingConfig) this.bindingConfigs.get(itemName);
-		return config != null ? (config.getItem()) : null;
-	}
-
 	/**
 	 * {@inheritDoc}
 	 */
 	@Override
 	public void processBindingConfiguration(String context, Item item, String bindingConfig) throws BindingConfigParseException {
 		super.processBindingConfiguration(context, item, bindingConfig);
-		XiaomiGatewayBindingConfig config = new XiaomiGatewayBindingConfig(item, bindingConfig);
+		XiaomiGatewayBindingConfig config = new XiaomiGatewayBindingConfig(bindingConfig);
 		
 		//parse bindingconfig here ...
 		

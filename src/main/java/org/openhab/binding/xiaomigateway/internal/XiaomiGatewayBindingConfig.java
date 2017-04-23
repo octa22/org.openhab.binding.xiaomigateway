@@ -1,7 +1,6 @@
 package org.openhab.binding.xiaomigateway.internal;
 
 import org.openhab.core.binding.BindingConfig;
-import org.openhab.core.items.Item;
 
 /**
  * This is a helper class holding binding specific configuration details
@@ -14,17 +13,10 @@ class XiaomiGatewayBindingConfig implements BindingConfig {
         return type;
     }
 
-    public Item getItem() {
-        return item;
-    }
-
     // put member fields here which holds the parsed values
     private String type;
-    private Item item;
 
-    public XiaomiGatewayBindingConfig(Item item, String type)
-    {
+    public XiaomiGatewayBindingConfig(String type) {
         this.type = type;
-        this.item = item;
     }
 }
