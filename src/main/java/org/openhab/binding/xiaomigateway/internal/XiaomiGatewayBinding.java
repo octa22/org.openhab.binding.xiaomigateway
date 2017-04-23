@@ -276,6 +276,12 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
                     processHumidityEvent(itemName, jobject);
                 }
                 break;
+            case "light":
+                if (isGatewayEvent(jobject)) {
+                    logger.debug("Processing light switch event");
+                    processLightSwitchEvent(itemName, jobject);
+                }
+                break;
             case "color":
                 if (isGatewayEvent(jobject)) {
                     logger.debug("Processing color event");
@@ -290,7 +296,7 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
                 break;
             case "brightness":
                 logger.debug("Processing brightness event");
-                processColorEvent(itemName, jobject);
+                processBrightnessEvent(itemName, jobject);
                 break;
             case "virtual_switch":
                 if (isButtonEvent(jobject, "click")) {
@@ -378,6 +384,23 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
         }
     }
 
+    private void processLightSwitchEvent(String itemName, JsonObject jobject) {
+        try {
+            String data = jobject.get("data").getAsString();
+            JsonObject jo = parser.parse(data).getAsJsonObject();
+            if (jo == null || !jo.has("rgb"))
+                return;
+            rgb = jo.get("rgb").getAsLong();
+            State oldValue = itemRegistry.getItem(itemName).getState();
+            State newValue = rgb > 0 ? OnOffType.ON : OnOffType.OFF;
+
+            if (!newValue.equals(oldValue))
+                eventPublisher.postUpdate(itemName, newValue);
+        } catch (Exception ex) {
+            logger.error(ex.toString());
+        }
+    }
+
     private void processColorEvent(String itemName, JsonObject jobject) {
         try {
             String data = jobject.get("data").getAsString();
@@ -386,19 +409,29 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
                 return;
             rgb = jo.get("rgb").getAsLong();
             State oldValue = itemRegistry.getItem(itemName).getState();
-            State newValue;
-            if (oldValue instanceof OnOffType) {
-                newValue = rgb > 0 ? OnOffType.ON : OnOffType.OFF;
-            } else if (oldValue instanceof HSBType) {
-                //HSBType
-                long br = rgb / 65536 / 256;
-                Color color = new Color((int) (rgb - (br * 65536 * 256)));
-                newValue = new HSBType(color);
-            } else {
-                //Percent Type
-                long br = rgb / 65536 / 256;
-                newValue = new PercentType((int) br);
-            }
+            //HSBType
+            long br = rgb / 65536 / 256;
+            Color color = new Color((int) (rgb - (br * 65536 * 256)));
+            State newValue = new HSBType(color);
+
+            if (!newValue.equals(oldValue))
+                eventPublisher.postUpdate(itemName, newValue);
+        } catch (Exception ex) {
+            logger.error(ex.toString());
+        }
+    }
+
+    private void processBrightnessEvent(String itemName, JsonObject jobject) {
+        try {
+            String data = jobject.get("data").getAsString();
+            JsonObject jo = parser.parse(data).getAsJsonObject();
+            if (jo == null || !jo.has("rgb"))
+                return;
+            rgb = jo.get("rgb").getAsLong();
+            State oldValue = itemRegistry.getItem(itemName).getState();
+            //HSBType
+            int brightness = (int) (rgb / 65536 / 256);
+            State newValue = new PercentType(brightness);
 
             if (!newValue.equals(oldValue))
                 eventPublisher.postUpdate(itemName, newValue);
@@ -973,12 +1006,12 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
             logger.error("Only OnOff/HSB/Percent command types currently supported");
             return;
         }
-        if (!(itemType.endsWith(".color") || itemType.endsWith(".brightness") || itemType.endsWith(".plug"))) {
+        if (!(itemType.endsWith(".light") || itemType.endsWith(".color") || itemType.endsWith(".brightness") || itemType.endsWith(".plug"))) {
             //only channel/plug items
             return;
         }
 
-        if ((itemType.endsWith(".color") || itemType.endsWith(".brightness")) && sid.equals(getItemSid(itemType))) {
+        if ((itemType.endsWith(".light") || itemType.endsWith(".color") || itemType.endsWith(".brightness")) && sid.equals(getItemSid(itemType))) {
             if (command instanceof OnOffType) {
                 changeGatewayColor(command.equals(OnOffType.OFF) ? 0 : startColor);
             } else if (command instanceof HSBType) {
@@ -1020,11 +1053,11 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
     }
 
     private long getRGBColor(HSBType hsb) {
-        //long br = (long) (hsb.getBrightness().floatValue() / 100 * 255);
+        long brightness = rgb / 65535 / 256;
         long red = (long) (hsb.getRed().floatValue() / 100 * 255);
         long green = (long) (hsb.getGreen().floatValue() / 100 * 255);
         long blue = (long) (hsb.getBlue().floatValue() / 100 * 255);
-        return 65536 * 256 * 100 + 65536 * red + 256 * green + blue;
+        return 65536 * 256 * brightness + 65536 * red + 256 * green + blue;
     }
 
     private void changeGatewayColor(long color) {
