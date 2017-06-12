@@ -377,6 +377,7 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
                     logger.debug("Processing voltage event");
                     processVoltageEvent(itemName, jobject);
                 }
+                break;
             default:
                 if (isCubeEvent(jobject)) {
                     processCubeEvent(itemName, type, jobject);
@@ -458,6 +459,12 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
 
     private void processCubeEvent(String itemName, String type, JsonObject jobject) {
         String event = getStatusEvent(jobject);
+
+        if (event == null) {
+            //it has no event data, maybe voltage only?
+            return;
+        }
+
         boolean publish = false;
         if (isRotateCubeEvent(jobject)) {
             event = isLeftRotate(jobject) ? "rotate_left" : "rotate_right";
@@ -586,10 +593,7 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
         String newId = jobject.get("sid").getAsString();
         String model = jobject.get("model").getAsString();
         addDevice(newId, model);
-        if (model.equals("gateway") || model.equals("sensor_ht") || model.equals("motion") || model.equals("magnet") || model.equals("plug")) {
-            //read value
-            processOtherCommands(jobject);
-        }
+        processOtherCommands(jobject);
     }
 
     private void processMotionEvent(String itemName, JsonObject jobject) {
@@ -812,10 +816,9 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
     }
 
     private Float formatValue(String value) {
-        if( value.length() > 1) {
+        if (value.length() > 1) {
             return Float.parseFloat(value.substring(0, value.length() - 2) + "." + value.substring(2));
-        }
-        else {
+        } else {
             return Float.parseFloat(value);
         }
     }
