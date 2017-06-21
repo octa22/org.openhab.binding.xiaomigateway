@@ -349,7 +349,7 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
                 }
                 break;
             case "plug":
-                if (isPlugEvent(jobject)) {
+                if (isCommonPlugEvent(jobject)) {
                     logger.debug("Processing plug event");
                     processPlugEvent(itemName, jobject);
                 }
@@ -361,13 +361,13 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
                 }
                 break;
             case "power_consumed":
-                if (isPlugEvent(jobject)) {
+                if (isCommonPlugEvent(jobject)) {
                     logger.debug("Processing plug power_consumed event");
                     processPlugPowerConsumedEvent(itemName, jobject);
                 }
                 break;
             case "load_power":
-                if (isPlugEvent(jobject)) {
+                if (isCommonPlugEvent(jobject)) {
                     logger.debug("Processing plug load_power event");
                     processPlugLoadPowerEvent(itemName, jobject);
                 }
@@ -376,6 +376,12 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
                 if (hasVoltage(jobject)) {
                     logger.debug("Processing voltage event");
                     processVoltageEvent(itemName, jobject);
+                }
+                break;
+            case "alarm":
+                if (isAlarmEvent(jobject)) {
+                    logger.debug("Processing voltage event");
+                    processAlarmEvent(itemName, jobject);
                 }
                 break;
             default:
@@ -560,6 +566,14 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
         return checkModel(jobject, "plug");
     }
 
+    private boolean isCommonPlugEvent(JsonObject jobject) {
+        return checkModel(jobject, "plug") || checkModel(jobject, "86plug");
+    }
+
+    private boolean isAlarmEvent(JsonObject jobject) {
+        return checkModel(jobject, "smoke") || checkModel(jobject, "natgas");
+    }
+
     private boolean hasVoltage(JsonObject jobject) {
         if (jobject != null && jobject.has("data")) {
             String data = jobject.get("data").getAsString();
@@ -633,6 +647,21 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
             oldValue = itemRegistry.getItem(itemName).getState();
             State newValue = stat.equals("on") ? OnOffType.ON : OnOffType.OFF;
             if (!newValue.equals(oldValue) || newValue.equals(OnOffType.ON))
+                eventPublisher.postUpdate(itemName, newValue);
+        } catch (ItemNotFoundException e) {
+            logger.error(e.toString());
+        }
+    }
+
+    private void processAlarmEvent(String itemName, JsonObject jobject) {
+        String data = jobject.get("data").getAsString();
+        JsonObject jo = parser.parse(data).getAsJsonObject();
+        String stat = (jo.has("status")) ? jo.get("status").getAsString().toLowerCase() : "0";
+        State oldValue;
+        try {
+            oldValue = itemRegistry.getItem(itemName).getState();
+            State newValue = new DecimalType(Integer.parseInt(stat));
+            if (!newValue.equals(oldValue))
                 eventPublisher.postUpdate(itemName, newValue);
         } catch (ItemNotFoundException e) {
             logger.error(e.toString());

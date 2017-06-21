@@ -9,9 +9,19 @@ Supported devices:
 - motion sensor
 - temperature & humidity sensor
 - button (simple round switch)
-- plug (zigbee version, reporting of power consumed, power load, ON/OFF and if device in use)
+- plug (zigbee version, reporting of power consumed, power load, state and if device in use)
+- 86plug (reporting of power consumed, state and power load)
+- natgas & smoke sensors (alarm integer events - see below)
 - switch 86sw1/2 (no controlling, only getting events click, double click & both click)
 - magic cube (all events)
+
+Alarm events (natgas & smoke)
+- 0: Release alarm
+- 1: Fire alarm 
+- 2: Analog alarm 
+- 8: Battery fault alarm (smoke alarm only) 
+- 64: Sensitivity fault alarm 
+- 32768: IIC communication failure
 
 Based on info found here: https://github.com/louisZL/lumi-gateway-local-api
 
@@ -24,8 +34,6 @@ copy __org.openhab.binding.xiaomigateway__ directory to __binding__ directory of
 build using maven (mvn clean install)
 
 # install
-~~copy gson-2.3.1.jar to addons directory of OpenHAB (search internet or download here: http://central.maven.org/maven2/com/google/code/gson/gson/2.3.1/gson-2.3.1.jar)~~
-
 copy target file __org.openhab.binding.xiaomigateway*.jar__ to __addons__ directory of OpenHAB distribution
 
 # usage
@@ -40,11 +48,11 @@ The binding detects a Xiaomi gateway on local network and lists all sub devices.
 ```
 
 sid is a sub device identificator used in item configuration file.
-possible sensor values are: magnet, motion, temperature, humidity, voltage
-possible button values are: virtual_switch (button simulates ON/OFF switch), click, long_click, double_click, voltage
-possible switch values are: click, double_click, both_click, voltage
-possible cube values are: flip90, flip180, move, tap_twice, shake_air, swing, alert, free_fall, rotate_left, rotate_right, voltage (ON command is received when an event fired)  
-possible plug values are: plug, inuse, power_consumed, load_power
+- possible sensor values are: magnet, motion, temperature, humidity, voltage
+- possible button values are: virtual_switch (button simulates ON/OFF switch), click, long_click, double_click, voltage
+- possible switch values are: click, double_click, both_click, voltage
+- possible cube values are: flip90, flip180, move, tap_twice, shake_air, swing, alert, free_fall, rotate_left, rotate_right, voltage (ON command is received when an event fired)  
+- possible plug values are: plug, inuse, power_consumed, load_power
 
 #openhab.cfg
 If you want to control devices please supply a developer key (you can see it in Mi Home app when you enable developer mode)
@@ -69,14 +77,15 @@ Number  RoomTemperature "Temperature  [%.1f °C]" <temperature>	{ xiaomigateway=
 Number  RoomHumidity "Humidity  [%.1f %%]" <humidity>	{ xiaomigateway="158d0001182814.humidity" }
 Number  RoomSensorVoltage "Sensor voltage [%.0f mV]" { xiaomigateway="158d0001182814.voltage" }
 Switch  XiaomiGatewayLight "Gateway light" { xiaomigateway="f1b5299a55e5.light" }
-Switch  XiaomiGatewayIllumination "Gateway illumination [%d]" { xiaomigateway="f1b5299a55e5.illumination" }
+Number  XiaomiGatewayIllumination "Gateway illumination [%d]" { xiaomigateway="f1b5299a55e5.illumination" }
 Color   XiaomiGatewayLightColor "Gateway light color" { xiaomigateway="f1b5299a55e5.color" }
 Dimmer  XiaomiGatewayBrightness "Gateway brightness" { xiaomigateway="f1b5299a55e5.brightness" }
 Switch  XiaomiPlug "Xiaomi zigbee plug" { xiaomigateway="158d00012944b3.plug" }
 Switch  XiaomiPlugInUse "Xiaomi zigbee plug in use" { xiaomigateway="158d00012944b3.inuse" }
 Number  XiaomiPlugConsumed "Xiaomi zigbee plug consumed [%.0f Wh]" { xiaomigateway="158d00012944b3.power_consumed" }
 Number  XiaomiPlugLoad "Xiaomi zigbee plug load [%.0f W]" { xiaomigateway="158d00012944b3.load_power" }
-
+Number  XiaomiSmokeAlarm "Smoke Alarm [%d]" { xiaomigateway="f1b5299a66e5.alarm" }
+Number  XiaomiNatgasAlarm "Natgas Alarm [%d]" { xiaomigateway="f1b5212e78e4.alarm" }
 
 //only getting event values, no remote control
 Switch  XiaomiControl0 "Xiaomi CH0 click" { xiaomigateway="158d0000f9defg.channel_0.click" }
