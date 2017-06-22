@@ -806,9 +806,7 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
         try {
             String data = jobject.get("data").getAsString();
             JsonObject jo = parser.parse(data).getAsJsonObject();
-            if (jo == null || !jo.has("status"))
-                return false;
-            return jobject != null && jobject.has("model") && jobject.get("model").getAsString().equals("switch") && jo.get("status").getAsString().equals(click);
+            return checkModel(jobject, "switch") && jo != null && jo.has("status") && jo.get("status").getAsString().equals(click);
         } catch (Exception ex) {
             logger.error(ex.toString());
             return false;
@@ -819,10 +817,8 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
         try {
             String data = jobject.get("data").getAsString();
             JsonObject jo = parser.parse(data).getAsJsonObject();
-            if (jo == null || (!jo.has("channel_0") && !jo.has("channel_1")))
-                return false;
             String channel = getItemChannel(itemType);
-            return (checkModel(jobject, "86sw1") || checkModel(jobject, "86sw2")) && jo.has(channel) && jo.get(channel).getAsString().equals(click);
+            return (checkModel(jobject, "86sw1") || checkModel(jobject, "86sw2")) && jo != null && jo.has(channel) && jo.get(channel).getAsString().equals(click);
         } catch (Exception ex) {
             logger.error(ex.toString());
             return false;
@@ -833,10 +829,8 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
         try {
             String data = jobject.get("data").getAsString();
             JsonObject jo = parser.parse(data).getAsJsonObject();
-            if (jo == null || (!jo.has("channel_0") && !jo.has("channel_1")))
-                return false;
             String channel = getItemChannel(itemType);
-            return (checkModel(jobject, "ctrl_ln1") || checkModel(jobject, "ctrl_ln2")) && jo.has(channel);
+            return (checkModel(jobject, "ctrl_ln1") || checkModel(jobject, "ctrl_ln2")) && jo != null && jo.has(channel);
         } catch (Exception ex) {
             logger.error(ex.toString());
             return false;
@@ -847,10 +841,8 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
         try {
             String data = jobject.get("data").getAsString();
             JsonObject jo = parser.parse(data).getAsJsonObject();
-            if (jo == null || !jo.has("dual_channel"))
-                return false;
             String channel = getItemChannel(itemType);
-            return checkModel(jobject, "86sw2") && jo.has(channel) && jo.get(channel).getAsString().equals("both_click");
+            return checkModel(jobject, "86sw2") && channel.equals("dual_channel") && jo != null && jo.has(channel) && jo.get(channel).getAsString().equals("both_click");
         } catch (Exception ex) {
             logger.error(ex.toString());
             return false;
