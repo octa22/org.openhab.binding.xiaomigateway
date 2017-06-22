@@ -13,6 +13,7 @@ Supported devices:
 - 86plug (reporting of power consumed, state and power load)
 - natgas & smoke sensors (alarm integer events - see below)
 - switch 86sw1/2 (no controlling, only getting events click, double click & both click)
+- wall switch ctrl_ln1/2 (On/Off)
 - magic cube (all events)
 
 Alarm events (natgas & smoke)
@@ -93,6 +94,9 @@ Switch  XiaomiControl0D "Xiaomi CH0 double click" { xiaomigateway="158d0000f9def
 Switch  XiaomiControl1 "Xiaomi CH1 click" { xiaomigateway="158d0000f9defg.channel_1.click" }
 Switch  XiaomiControl1D "Xiaomi CH1 double click" { xiaomigateway="158d0000f9defg.channel_1.double_click" }
 Switch  XiaomiControlBoth "Xiaomi both click" { xiaomigateway="158d0000f9defg.dual_channel.both_click" }
+Switch  XiaomiWallSwitch "Xiaomi 1-button wall switch" { xiaomigateway="f1b5299a66e7.channel_0.switch" }
+Switch  XiaomiWallSwitchL "Xiaomi 2-button wall switch left" { xiaomigateway="f1b5456a66e7.channel_0.switch" }
+Switch  XiaomiWallSwitchR "Xiaomi 2-button wall switch right" { xiaomigateway="f1b5456a66e7.channel_1.switch" }
 ```
 not working yet
 ```

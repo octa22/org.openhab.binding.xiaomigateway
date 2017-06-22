@@ -309,7 +309,6 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
                     logger.debug("Processing click event");
                     eventPublisher.sendCommand(itemName, OnOffType.ON);
                 }
-
                 break;
             case "double_click":
                 if (isButtonEvent(jobject, "double_click") || isSwitchEvent(jobject, type, "double_click")) {
@@ -323,7 +322,6 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
                     eventPublisher.sendCommand(itemName, OnOffType.ON);
                 }
                 break;
-
             case "long_click":
                 if (isButtonEvent(jobject, "long_click_press")) {
                     logger.debug("Processing long click event");
@@ -334,6 +332,12 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
                 if (isButtonEvent(jobject, "long_click_release")) {
                     logger.debug("Processing long click release event");
                     eventPublisher.sendCommand(itemName, OnOffType.ON);
+                }
+                break;
+            case "switch":
+                if (isWallSwitchEvent(jobject, type)) {
+                    logger.debug("Processing wall switch event");
+                    processWallSwitchEvent(itemName, type, jobject);
                 }
                 break;
             case "magnet":
@@ -388,6 +392,23 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
                 if (isCubeEvent(jobject)) {
                     processCubeEvent(itemName, type, jobject);
                 }
+        }
+    }
+
+    private void processWallSwitchEvent(String itemName, String itemType, JsonObject jobject) {
+        try {
+            String data = jobject.get("data").getAsString();
+            JsonObject jo = parser.parse(data).getAsJsonObject();
+            String channel = getItemChannel(itemType);
+            if (jo == null || !(jo.has(channel)))
+                return;
+            String value = jo.get(channel).getAsString().toLowerCase();
+            State oldValue = itemRegistry.getItem(itemName).getState();
+            State newValue = value.equals("on") ? OnOffType.ON : OnOffType.OFF;
+            if (!newValue.equals(oldValue))
+                eventPublisher.postUpdate(itemName, newValue);
+        } catch (Exception ex) {
+            logger.error(ex.toString());
         }
     }
 
@@ -802,6 +823,20 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
                 return false;
             String channel = getItemChannel(itemType);
             return (checkModel(jobject, "86sw1") || checkModel(jobject, "86sw2")) && jo.has(channel) && jo.get(channel).getAsString().equals(click);
+        } catch (Exception ex) {
+            logger.error(ex.toString());
+            return false;
+        }
+    }
+
+    private boolean isWallSwitchEvent(JsonObject jobject, String itemType) {
+        try {
+            String data = jobject.get("data").getAsString();
+            JsonObject jo = parser.parse(data).getAsJsonObject();
+            if (jo == null || (!jo.has("channel_0") && !jo.has("channel_1")))
+                return false;
+            String channel = getItemChannel(itemType);
+            return (checkModel(jobject, "ctrl_ln1") || checkModel(jobject, "ctrl_ln2")) && jo.has(channel);
         } catch (Exception ex) {
             logger.error(ex.toString());
             return false;
