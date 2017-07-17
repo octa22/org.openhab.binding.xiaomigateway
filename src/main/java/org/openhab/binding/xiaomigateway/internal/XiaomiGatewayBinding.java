@@ -202,8 +202,7 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
                         listDevice(jobject);
                         break;
                     case "write":
-                        logger.error("Received write command which is designed for the gateway. Are you sure you have the right developer key?");
-                        logger.error(sentence);
+                        logger.error("Received write command which is designed for the gateway. Are you sure you have the right developer key? {}", sentence);
                         break;
                     case "write_ack":
                         if (sentence.contains("\"error")) {
@@ -225,7 +224,7 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
                         processOtherCommands(jobject);
                         break;
                     default:
-                        logger.error("Unknown Xiaomi gateway command: " + command);
+                        logger.error("Unknown Xiaomi gateway command: {}", command);
                 }
             } catch (Exception e) {
                 logger.error(e.toString());
@@ -235,7 +234,7 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
 
     private void addDevice(String newId, String model) {
         if (!devicesList.containsKey(newId)) {
-            logger.info("Detected new Xiaomi smart device - sid: " + newId + " model: " + model);
+            logger.info("Detected new Xiaomi smart device - sid: {} model: {}", newId, model);
             devicesList.put(newId, model);
         }
     }
@@ -385,7 +384,7 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
                 break;
             case "alarm":
                 if (isAlarmEvent(jobject)) {
-                    logger.debug("Processing voltage event");
+                    logger.debug("Processing alarm event");
                     processAlarmEvent(itemName, jobject);
                 }
                 break;
@@ -497,7 +496,7 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
         if (isRotateCubeEvent(jobject)) {
             event = isLeftRotate(jobject) ? "rotate_left" : "rotate_right";
         }
-        logger.debug("XiaomiGateway: processing cube event " + event);
+        logger.debug("XiaomiGateway: processing cube event {}", event);
         switch (event) {
             case "flip90":
                 publish = type.endsWith(".flip90");
@@ -530,7 +529,7 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
                 publish = type.endsWith(".rotate_right");
                 break;
             default:
-                logger.error("Unknown cube event: " + event);
+                logger.error("Unknown cube event: {}", event);
         }
 
         if (publish)
@@ -611,14 +610,14 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
         sid = jobject.get("sid").getAsString();
         dest_port = jobject.get("port").getAsInt();
         gatewayIP = jobject.get("ip").getAsString();
-        logger.info("Discovered Xiaomi Gateway - sid: " + sid + " ip: " + gatewayIP + " port: " + dest_port);
+        logger.info("Discovered Xiaomi Gateway - sid: {} ip: {} port: {}", sid, gatewayIP ,dest_port);
     }
 
     private void listIds(JsonObject jobject) {
         String data = jobject.get("data").getAsString();
         JsonArray ja = parser.parse(data).getAsJsonArray();
         if (devicesList.size() == 0)
-            logger.info("Discovered total of " + ja.size() + " Xiaomi smart devices");
+            logger.info("Discovered total of {} Xiaomi smart devices", ja.size());
         requestRead(sid);
         for (JsonElement je : ja) {
             requestRead(je.getAsString());
@@ -957,7 +956,7 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
     @Override
     protected void execute() {
         // the frequently executed code (polling) goes here ...
-        // logger.debug("execute() method is called!");
+        logger.debug("execute() method is called!");
         if (!bindingsExist()) {
             return;
         }
@@ -1008,7 +1007,7 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
             byte[] sendData = sendString.getBytes("UTF-8");
             InetAddress addr = InetAddress.getByName(gatewayIP);
             DatagramPacket sendPacket = new DatagramPacket(sendData, sendData.length, addr, dest_port);
-            logger.debug("Sending to device: " + device + " message: " + sendString);
+            logger.debug("Sending to device: {} message: {}", device, sendString);
             socket.send(sendPacket);
         } catch (IOException e) {
             logger.error(e.toString());
@@ -1024,7 +1023,7 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
             byte[] sendData = sendString.getBytes("UTF-8");
             InetAddress addr = InetAddress.getByName(gatewayIP);
             DatagramPacket sendPacket = new DatagramPacket(sendData, sendData.length, addr, dest_port);
-            logger.debug("Sending to gateway: " + sid + " message: " + sendString);
+            logger.debug("Sending to gateway: {} message: {}", sid, sendString);
             socket.send(sendPacket);
         } catch (IOException e) {
             e.printStackTrace();
@@ -1122,7 +1121,7 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
             requestWrite(sid, new String[]{channel}, new Object[]{event});*/
         } else {
             if (!command.equals(OnOffType.OFF))
-                logger.error("Unsupported channel/event: " + itemType + " or command: " + command);
+                logger.error("Unsupported channel/event: {} or command: {}", itemType, command);
         }
 
     }
