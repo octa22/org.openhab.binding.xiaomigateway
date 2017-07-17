@@ -7,7 +7,8 @@ Supported devices:
 - gateway light (including color and brightness change)
 - magnet sensor (door sensor)
 - motion sensor
-- temperature & humidity sensor
+- temperature & humidity sensor (the round one)
+- temperature/humidity/pressure sensor (the square one)
 - button (simple round switch)
 - plug (zigbee version, reporting of power consumed, power load, state and if device in use)
 - 86plug (reporting of power consumed, state and power load)
@@ -76,6 +77,7 @@ Contact XiaomiContact "Xiaomi contact" { xiaomigateway="158d00010e4104.magnet" }
 Contact XiaomiMotion "Xiaomi motion" { xiaomigateway="158d00010e4105.motion" }
 Number  RoomTemperature "Temperature  [%.1f °C]" <temperature>	{ xiaomigateway="158d0001182814.temperature" }
 Number  RoomHumidity "Humidity  [%.1f %%]" <humidity>	{ xiaomigateway="158d0001182814.humidity" }
+Number  RoomPressure "Pressure [%.0f hPa]" <pressure>   { xiaomigateway="158d0001715111.pressure" }
 Number  RoomSensorVoltage "Sensor voltage [%.0f mV]" { xiaomigateway="158d0001182814.voltage" }
 Switch  XiaomiGatewayLight "Gateway light" { xiaomigateway="f1b5299a55e5.light" }
 Number  XiaomiGatewayIllumination "Gateway illumination [%d]" { xiaomigateway="f1b5299a55e5.illumination" }

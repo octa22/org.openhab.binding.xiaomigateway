@@ -177,11 +177,7 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
                 String sentence = new String(dgram.getData(), 0,
                         dgram.getLength());
 
-                if (sentence.contains("\\\"mid\\\""))
-                    logger.info("Received packet: " + sentence);
-                else
-                    logger.debug("Received packet: " + sentence);
-
+                logger.debug("Received packet: {}", sentence);
 
                 JsonObject jobject = parser.parse(sentence).getAsJsonObject();
                 String command = jobject.get("cmd").getAsString();
@@ -273,6 +269,12 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
                 if (isHumidityEvent(jobject)) {
                     logger.debug("Processing humidity event");
                     processHumidityEvent(itemName, jobject);
+                }
+                break;
+            case "pressure":
+                if (isPressureEvent(jobject)) {
+                    logger.debug("Processing pressure event");
+                    processPressureEvent(itemName, jobject);
                 }
                 break;
             case "light":
@@ -772,14 +774,18 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
     }
 
     private void processTemperatureEvent(String itemName, JsonObject jobject) {
-        processSensorHTEvent(itemName, jobject, "temperature");
+        processSensorHTPEvent(itemName, jobject, "temperature");
     }
 
     private void processHumidityEvent(String itemName, JsonObject jobject) {
-        processSensorHTEvent(itemName, jobject, "humidity");
+        processSensorHTPEvent(itemName, jobject, "humidity");
     }
 
-    private void processSensorHTEvent(String itemName, JsonObject jobject, String sensor) {
+    private void processPressureEvent(String itemName, JsonObject jobject) {
+        processSensorHTPEvent(itemName, jobject, "pressure");
+    }
+
+    private void processSensorHTPEvent(String itemName, JsonObject jobject, String sensor) {
         String data = jobject.get("data").getAsString();
         JsonObject jo = parser.parse(data).getAsJsonObject();
         Float val = formatValue(jo.get(sensor).getAsString());
@@ -864,6 +870,17 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
             String data = jobject.get("data").getAsString();
             JsonObject jo = parser.parse(data).getAsJsonObject();
             return (checkModel(jobject, "sensor_ht") || checkModel(jobject, "weather.v1")) && jo.has("humidity");
+        } catch (Exception ex) {
+            logger.error(ex.toString());
+            return false;
+        }
+    }
+
+    private boolean isPressureEvent(JsonObject jobject) {
+        try {
+            String data = jobject.get("data").getAsString();
+            JsonObject jo = parser.parse(data).getAsJsonObject();
+            return checkModel(jobject, "weather.v1") && jo.has("pressure");
         } catch (Exception ex) {
             logger.error(ex.toString());
             return false;
