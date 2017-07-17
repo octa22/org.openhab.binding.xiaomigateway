@@ -226,7 +226,6 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
                         processOtherCommands(jobject);
                         break;
                     case "report":
-                        model = jobject.get("model").getAsString();
                         processOtherCommands(jobject);
                         break;
                     default:
@@ -853,7 +852,7 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
         try {
             String data = jobject.get("data").getAsString();
             JsonObject jo = parser.parse(data).getAsJsonObject();
-            return checkModel(jobject, "sensor_ht") && jo.has("temperature");
+            return (checkModel(jobject, "sensor_ht") || checkModel(jobject, "weather.v1")) && jo.has("temperature");
         } catch (Exception ex) {
             logger.error(ex.toString());
             return false;
@@ -864,7 +863,7 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
         try {
             String data = jobject.get("data").getAsString();
             JsonObject jo = parser.parse(data).getAsJsonObject();
-            return checkModel(jobject, "sensor_ht") && jo.has("humidity");
+            return (checkModel(jobject, "sensor_ht") || checkModel(jobject, "weather.v1")) && jo.has("humidity");
         } catch (Exception ex) {
             logger.error(ex.toString());
             return false;
