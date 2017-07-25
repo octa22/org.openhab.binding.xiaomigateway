@@ -21,26 +21,29 @@ import static org.openhab.binding.xiaomigateway.internal.EncryptionHelper.parseH
  * Created by Ondrej Pecta on 24.07.2017.
  */
 public class MiioMessage {
-    final protected byte[] NO_CHECKSUM = new byte[]{0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0};
-    final protected byte[] DISCOVERY_PACKET = parseHexBinary("21310020ffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
-    final protected byte[] BAD_CHECKSUM = parseHexBinary("FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF");
-    final protected byte[] EMPTY_MESSAGE = new byte[]{};
-    final protected byte[] NEW_HEADER = parseHexBinary("2131000000000000000000000000000000000000000000000000000000000000");
-    ;
-    final protected int DATA_START = 32;
-    final protected int HEADER_LENGTH = 32;
-    final protected int CHECKSUM_START = 16;
-    final protected int DEVICE_ID_START = 8;
-    final protected int STAMP_START = 12;
-    final protected int LENGTH_START = 2;
+    private final byte[] NO_CHECKSUM = new byte[]{0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0};
+    private final byte[] EMPTY_MESSAGE = new byte[]{};
+    private final byte[] NEW_HEADER = parseHexBinary("2131000000000000000000000000000000000000000000000000000000000000");
+
+    private final int DATA_START = 32;
+    private final int HEADER_LENGTH = 32;
+    private final int CHECKSUM_START = 16;
+    private final int DEVICE_ID_START = 8;
+    private final int STAMP_START = 12;
+    private final int LENGTH_START = 2;
 
 
     private static final Logger logger =
             LoggerFactory.getLogger(MiioMessage.class);
 
 
-    private byte[] message;
-    private byte[] token;
+    protected byte[] message;
+    protected byte[] token;
+
+    public MiioMessage() {
+        this.message = null;
+        this.token = null;
+    }
 
     public MiioMessage(byte[] message, String token) {
         this.message = message;
@@ -50,6 +53,14 @@ public class MiioMessage {
     public MiioMessage(String token) {
         this.token = parseHexBinary(token);
         this.message = EMPTY_MESSAGE;
+    }
+
+    public void setMessage(byte[] message) {
+        this.message = message;
+    }
+
+    public void setToken(byte[] token) {
+        this.token = token;
     }
 
     public byte[] getHeader() {
@@ -120,7 +131,7 @@ public class MiioMessage {
     public boolean hasChecksum() {
         try {
             byte[] headerChecksum = Arrays.copyOfRange(message, CHECKSUM_START, DATA_START);
-            return !Arrays.equals(headerChecksum, NO_CHECKSUM);
+            return !Arrays.equals(headerChecksum, NO_CHECKSUM) && message.length > HEADER_LENGTH;
         } catch (Exception ex) {
             logger.error("hasChecksum error: {}", ex.toString());
         }

@@ -12,6 +12,7 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import com.google.gson.stream.JsonReader;
 import org.apache.commons.lang.StringUtils;
 import org.openhab.binding.xiaomigateway.XiaomiGatewayBindingProvider;
 import org.openhab.core.binding.AbstractActiveBinding;
@@ -70,9 +71,6 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
     private int illumination = 0;
     private long startColor = 1677786880L; //green
 
-    private boolean first = true;
-    private boolean second = true;
-
     //Gson parser
     private JsonParser parser = new JsonParser();
 
@@ -129,24 +127,30 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
 
         // read further config parameters here ...
         readConfiguration(configuration);
-        setupSocket();
-        setProperlyConfigured(socket != null);
+
+
+        JsonObject jobject = parser.parse("{\"partner_id\":\"\",\"id\":1816,\"code\":0,\"message\":\"ok\",\"result\":{\"hw_ver\":\"Linux\",\"fw_ver\":\"unknown\",\"ap\":{\"ssid\":\"ubiquiti\",\"rssi\":\"-59\",\"bssid\":\"46:d9:e7:fb:51:b4\"},\"netif\":{\"localIp\":\"192.168.2.103\",\"mask\":\"255.255.255.0\",\"gw\":\"192.168.2.1\"},\"model\":\"xiaomi.wifispeaker.v1\",\"mac\":\"00:9E:C8:C2:14:8B\",\"token\":\"636a356945696c6c76566d48324e6d48\",\"life\":330891}}").getAsJsonObject();
+
 
         //yeelink.light.strip1
-        //miioTokenList.put(50335780, "cea635800e253b972bb05c42ebfad419");
+        miioTokenList.put(50335780, "cea635800e253b972bb05c42ebfad419");
 
         //rockrobo.vacuum.v1
         miioTokenList.put(64506184, "424d6a5077556d7667714535686c4933");
 
         //lumi.gateway.v3
-        //miioTokenList.put(44687093, "7d146de2d48ad9b4260082e7ce725a4e");
+        miioTokenList.put(44687093, "7d146de2d48ad9b4260082e7ce725a4e");
 
         //philips.light.sread1
-        //miioTokenList.put(46552086, "15ce1573b9b7597a97cad8bd57fdd83c");
+        miioTokenList.put(46552086, "15ce1573b9b7597a97cad8bd57fdd83c");
 
         //xiaomi.wifispeaker.v1
-        //miioTokenList.put(54664169, "636a356945696c6c76566d48324e6d48");
+        miioTokenList.put(54664169, "636a356945696c6c76566d48324e6d48");
 
+        setupSocket();
+        setProperlyConfigured(socket != null);
+
+        /*
         decryptMessage("213100600000000003d8494859764ec623be32157138c3fe696f73461966bd668fd5c9147147500b71326f9116d2f63d5d62e3fd91a4d22dd12bbc626ce229ec7e3eba192602de4abfcd2398060b6963e906365bed60f8d522a1307db49bae73","424d6a5077556d7667714535686c4933");
         decryptMessage("213100600000000003d8494859764ec695723fc78b775d7fca234672d87a98b11131f4f616cc9608f0fb5c141057c6caed6df21c0c668937cfe458d77ea89701015219e113a3e2fce1e0c373cd7b927156f83fc545a3f40923731bb085582507", "424d6a5077556d7667714535686c4933");
         decryptMessage("213100500000000003d8494859764ec7a3c3bb3f957670b791ce2f114a11580a9fbf349c97228bb509ff430da9f1ccf7d5d20a340bc4fbb4acd798eef9fa2b28fb7c22c333090ac4d1319194f1a354d2", "424d6a5077556d7667714535686c4933");
@@ -193,7 +197,7 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
             byte[] sendData = sendString.getBytes("UTF-8");
             InetAddress addr = InetAddress.getByName(MCAST_ADDR);
             DatagramPacket sendPacket = new DatagramPacket(sendData, sendData.length, addr, MCAST_PORT);
-
+            logger.info("Sending Miio discovery message...");
             socket.send(sendPacket);
         } catch (IOException e) {
             logger.error(e.toString());
@@ -241,36 +245,49 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
                 logger.debug("Received udp packet from device: {}", id);
 
                 if (miioTokenList.containsKey(id)) {
-                    logger.info("Device token is: {}", miioTokenList.get(id));
+                    //logger.info("Device token is: {}", miioTokenList.get(id));
                     MiioMessage miio = new MiioMessage(response, miioTokenList.get(id));
                     int stamp = miio.getStamp();
 
                     if (!miioDeviceList.containsKey(id)) {
                         MiioDevice newDevice = new MiioDevice(id, miioTokenList.get(id), dgram.getAddress(), stamp);
                         miioDeviceList.put(id, newDevice);
-                        //logger.info("Added device: {}", newDevice.toString());
-                        //if (miio.isHandshakeResponse() ) {
-                        logger.info("The message is a handshake one!");
                         Thread.sleep(1000);
                         requestTestWrite(id);
-                        first = false;
                         //}
                     } else {
                         // update stamp
                         miioDeviceList.get(id).setStamp(stamp);
                     }
 
-                    if (miio.hasChecksum() && miio.isValid()) {
-                        logger.info("The message has valid checksum!");
-                        byte[] decrypted = miio.getDecryptedData();
-                        logger.info("Decrypted message: {}", new String(decrypted));
 
+                    if (!(miio.hasChecksum() && miio.isValid())) {
+                        //bad packet
+                        continue;
+                    }
+
+                    if( miioDeviceList.get(id).getModel() == null) {
+                        logger.debug("The message has valid checksum!");
+                        byte[] decrypted = miio.getDecryptedData();
+
+                        String text = getFixedString(decrypted);
+                        logger.debug("Decrypted message: -{}-", text);
+
+                        JsonObject jobject = parser.parse(text).getAsJsonObject();
+                        if(jobject != null && jobject.has("result") && jobject.get("result").isJsonObject()) {
+                            JsonObject result = jobject.get("result").getAsJsonObject();
+                            String model = result.get("model").getAsString();
+                            miioDeviceList.get(id).setModel(model);
+                            logger.info("Detected device: {} with id: {} and IP: {}", model, id, miioDeviceList.get(id).getAddress().getHostAddress() );
+                        }
+                    }
+                    /*
                         Thread.sleep(1000);
                         if (second) {
                             requestTestWrite2(id);
                             second = false;
                         }
-                    }
+                    }*/
 
 
                 } else {
@@ -285,6 +302,16 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
                 logger.error("receiveMiioData exception: {}", ex.toString());
             }
         }
+    }
+
+    private String getFixedString(byte[] decrypted) {
+        // HACK sometimes a zero byte is appended to a JSON response.
+        int closingChar = decrypted[decrypted.length-1];
+        if(closingChar == 0 ) {
+            decrypted[decrypted.length-1] = ' ';
+        }
+
+        return new String(decrypted).trim();
     }
 
 
@@ -1089,9 +1116,7 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
             return;
         }
 
-        if (first) {
-            discoverMiioDevices();
-        }
+        discoverMiioDevices();
 
         if (sid.equals("") || token.equals("")) {
             discoverGateways();
@@ -1148,10 +1173,9 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
 
     private void discoverMiioDevices() {
         try {
-            byte[] sendData = parseHexBinary("21310020ffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
+            MiioDiscoveryMessage msg = new MiioDiscoveryMessage();
             InetAddress addr = InetAddress.getByName("255.255.255.255");
-            //InetAddress addr = InetAddress.getByName("192.168.2.43");
-            DatagramPacket sendPacket = new DatagramPacket(sendData, sendData.length, addr, 54321);
+            DatagramPacket sendPacket = new DatagramPacket(msg.getMessage(), msg.getMessage().length, addr, 54321);
             logger.debug("Sending handshake ...");
             udpSocket.send(sendPacket);
         } catch (IOException e) {
@@ -1163,12 +1187,11 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
         MiioDevice device = miioDeviceList.get(id);
         //String sendString = "{\"id\":" + device.getMessageId() + ",\"method\":\"miIO.info\",\"params\":[]}";
         //String sendString = "{\"id\":" + device.getMessageId() + ",\"method\":\"get_prop\",\"params\":[\"umi\"]}";
-        String sendString = "{\"id\":" + device.getMessageId() + ",\"method\":\"get_consumable\",\"params\":[]}";
+        String sendString = "{\"id\":" + device.getMessageId() + ",\"method\":\"miIO.info\",\"params\":[]}";
 
         logger.info("Sending message: {}", sendString);
         int stamp = device.getStamp();
         int secondsPassed = device.getSecondsPassed();
-        logger.info("Seconds passed: {}", secondsPassed);
 
         requestMiioWrite(sendString, id, stamp + secondsPassed);
     }

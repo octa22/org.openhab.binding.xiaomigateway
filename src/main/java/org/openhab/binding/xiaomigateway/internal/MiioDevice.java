@@ -11,6 +11,7 @@ public class MiioDevice {
     private long messageId =  (int)(Math.random() * 5000); ;
     private int stamp;
     private String token;
+    private String model;
     private InetAddress address;
     private Date lastMessageTime;
 
@@ -45,6 +46,14 @@ public class MiioDevice {
 
     public void setToken(String token) {
         this.token = token;
+    }
+
+    public String getModel() {
+        return model;
+    }
+
+    public void setModel(String model) {
+        this.model = model;
     }
 
     public InetAddress getAddress() {
