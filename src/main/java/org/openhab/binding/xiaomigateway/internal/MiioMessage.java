@@ -196,13 +196,6 @@ public class MiioMessage {
         return new byte[]{};
     }
 
-    /*
-    public static byte[] encryptMiio(String text, String token) {
-        byte[] tokenBytes = parseHexBinary(token);
-        return encryptMiio(text, tokenBytes);
-    }*/
-
-
     public static byte[] encryptMiio(String text, byte[] tokenBytes) {
         try {
             byte[] key = doMD5(tokenBytes);

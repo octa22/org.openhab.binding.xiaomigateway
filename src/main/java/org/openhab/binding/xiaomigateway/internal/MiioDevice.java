@@ -4,11 +4,11 @@ import java.net.InetAddress;
 import java.util.Date;
 
 /**
- * Created by Ondrej on 24.07.2017.
+ * Created by Ondrej Pecta on 24.07.2017.
  */
 public class MiioDevice {
     private int deviceId;
-    private long messageId =  (int)(Math.random() * 5000); ;
+    private long messageId = (int) (Math.random() * 5000);
     private int stamp;
     private String token;
     private String model;
@@ -69,6 +69,6 @@ public class MiioDevice {
     }
 
     public int getSecondsPassed() {
-        return (int) (new Date().getTime() - lastMessageTime.getTime())/1000;
+        return (int) (new Date().getTime() - lastMessageTime.getTime()) / 1000;
     }
 }
