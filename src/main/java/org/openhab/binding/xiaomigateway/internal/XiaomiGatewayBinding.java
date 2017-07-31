@@ -703,7 +703,7 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
         State newValue;
         State oldValue;
         if (jo.has(event)) {
-            newValue = new DecimalType(jo.get(event).getAsInt());
+            newValue = new DecimalType(jo.get(event).getAsDouble());
         } else {
             if (jo.has("status") && jo.get("status").getAsString().toLowerCase().equals("off") && event.equals("load_power")) {
                 //if status is off then power consumption is 0
