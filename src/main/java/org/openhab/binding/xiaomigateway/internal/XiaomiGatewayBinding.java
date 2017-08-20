@@ -799,7 +799,7 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
     }
 
     private boolean isMagnetEvent(JsonObject jobject) {
-        return checkModel(jobject, "magnet");
+        return checkModel(jobject, "magnet") || checkModel(jobject, "sensor_magnet.aq2");
     }
 
     private boolean isGatewayEvent(JsonObject jobject) {
