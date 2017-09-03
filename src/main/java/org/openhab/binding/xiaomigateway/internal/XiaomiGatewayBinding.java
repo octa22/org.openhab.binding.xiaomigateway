@@ -8,12 +8,14 @@
  */
 package org.openhab.binding.xiaomigateway.internal;
 
+import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import org.apache.commons.lang.StringUtils;
 import org.openhab.binding.xiaomigateway.XiaomiGatewayBindingProvider;
+import org.openhab.binding.xiaomigateway.model.GatewayDataResponse;
+import org.openhab.binding.xiaomigateway.model.GatewayResponse;
 import org.openhab.core.binding.AbstractActiveBinding;
 import org.openhab.core.items.ItemNotFoundException;
 import org.openhab.core.items.ItemRegistry;
@@ -67,6 +69,7 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
 
     //Gson parser
     private JsonParser parser = new JsonParser();
+    private Gson gson = new Gson();
 
 
     byte[] buffer = new byte[BUFFER_LENGTH];
@@ -120,6 +123,7 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
         readConfiguration(configuration);
         setupSocket();
         setProperlyConfigured(socket != null);
+        discoverGateways();
     }
 
     private void readConfiguration(Map<String, Object> configuration) {
@@ -179,49 +183,49 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
 
                 logger.debug("Received packet: {}", sentence);
 
-                JsonObject jobject = parser.parse(sentence).getAsJsonObject();
-                String command = jobject.get("cmd").getAsString();
+                GatewayResponse response = gson.fromJson(sentence, GatewayResponse.class);
+                String command = response.getCmd();
 
-                if (jobject.has("model") && jobject.has("sid")) {
-                    String newId = jobject.get("sid").getAsString();
-                    String model = jobject.get("model").getAsString();
-                    addDevice(newId, model);
+                if (response.getModel() != null && response.getSid() != null) {
+                    addDevice(response.getSid(), response.getModel());
                 }
 
                 switch (command) {
                     case "iam":
-                        getGatewayInfo(jobject);
+                        getGatewayInfo(response);
                         requestRead(sid);
                         requestIdList();
                         break;
                     case "get_id_list_ack":
-                        token = jobject.get("token").getAsString();
-                        listIds(jobject);
+                        token = response.getToken();
+                        listIds(response);
                         break;
                     case "read_ack":
-                        listDevice(jobject);
+                        listDevice(response);
                         break;
                     case "write":
                         logger.error("Received write command which is designed for the gateway. Are you sure you have the right developer key? {}", sentence);
                         break;
                     case "write_ack":
                         if (sentence.contains("\"error")) {
-                            logger.error(sentence);
+                            logger.error("Received error write ack: {}", sentence);
                         }
                         break;
                     case "heartbeat":
-                        String model = jobject.get("model").getAsString();
+                        //String model = jobject.get("model").getAsString();
+                        String model = response.getModel();
                         if (model.equals("gateway")) {
-                            token = jobject.get("token").getAsString();
+                            //token = jobject.get("token").getAsString();
+                            token = response.getToken();
                             break;
                         }
                         if (model.equals("cube") || model.equals("switch")) {
                             break;
                         }
-                        processOtherCommands(jobject);
+                        processOtherCommands(response);
                         break;
                     case "report":
-                        processOtherCommands(jobject);
+                        processOtherCommands(response);
                         break;
                     default:
                         logger.error("Unknown Xiaomi gateway command: {}", command);
@@ -234,24 +238,23 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
 
     private void addDevice(String newId, String model) {
         if (!devicesList.containsKey(newId)) {
-            logger.info("Detected new Xiaomi smart device - sid: {} model: {}", newId, model);
+            logger.info("Detected a new Xiaomi smart device - sid: {} model: {}", newId, model);
             devicesList.put(newId, model);
         }
     }
 
-    private void processOtherCommands(JsonObject jobject) {
-
+    private void processOtherCommands(GatewayResponse response) {
         for (final XiaomiGatewayBindingProvider provider : providers) {
             for (String itemName : provider.getItemNames()) {
-                processEvent(provider, itemName, jobject);
+                processEvent(provider, itemName, response);
             }
 
         }
     }
 
-    private void processEvent(XiaomiGatewayBindingProvider provider, String itemName, JsonObject jobject) {
+    private void processEvent(XiaomiGatewayBindingProvider provider, String itemName, GatewayResponse response) {
         String type = provider.getItemType(itemName);
-        String eventSid = jobject.get("sid").getAsString();
+        String eventSid = response.getSid();
 
         if (!(type.startsWith(eventSid) && type.contains(".")))
             return;
@@ -259,150 +262,147 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
         String event = getItemEvent(type);
         switch (event) {
             case "temperature":
-                if (isTemperatureEvent(jobject)) {
+                if (isTemperatureEvent(response)) {
                     logger.debug("Processing temperature event");
-                    processTemperatureEvent(itemName, jobject);
+                    processTemperatureEvent(itemName, response);
                 }
                 break;
             case "humidity":
-                if (isHumidityEvent(jobject)) {
+                if (isHumidityEvent(response)) {
                     logger.debug("Processing humidity event");
-                    processHumidityEvent(itemName, jobject);
+                    processHumidityEvent(itemName, response);
                 }
                 break;
             case "pressure":
-                if (isPressureEvent(jobject)) {
+                if (isPressureEvent(response)) {
                     logger.debug("Processing pressure event");
-                    processPressureEvent(itemName, jobject);
+                    processPressureEvent(itemName, response);
                 }
                 break;
             case "light":
-                if (isGatewayEvent(jobject)) {
+                if (isGatewayEvent(response)) {
                     logger.debug("Processing light switch event");
-                    processLightSwitchEvent(itemName, jobject);
+                    processLightSwitchEvent(itemName, response);
                 }
                 break;
             case "color":
-                if (isGatewayEvent(jobject)) {
+                if (isGatewayEvent(response)) {
                     logger.debug("Processing color event");
-                    processColorEvent(itemName, jobject);
+                    processColorEvent(itemName, response);
                 }
                 break;
             case "illumination":
-                if (isGatewayEvent(jobject)) {
+                if (isGatewayEvent(response)) {
                     logger.debug("Processing illumination event");
-                    processIlluminationEvent(itemName, jobject);
+                    processIlluminationEvent(itemName, response);
                 }
                 break;
             case "brightness":
                 logger.debug("Processing brightness event");
-                processBrightnessEvent(itemName, jobject);
+                processBrightnessEvent(itemName, response);
                 break;
             case "virtual_switch":
-                if (isButtonEvent(jobject, "click")) {
+                if (isButtonEvent(response, "click")) {
                     logger.debug("Processing virtual switch click event");
                     processVirtualSwitchEvent(itemName);
                 }
                 break;
             case "click":
-                if (isButtonEvent(jobject, "click") || isSwitchEvent(jobject, type, "click")) {
+                if (isButtonEvent(response, "click") || isSwitchEvent(response, type, "click")) {
                     logger.debug("Processing click event");
                     eventPublisher.sendCommand(itemName, OnOffType.ON);
                 }
                 break;
             case "double_click":
-                if (isButtonEvent(jobject, "double_click") || isSwitchEvent(jobject, type, "double_click")) {
+                if (isButtonEvent(response, "double_click") || isSwitchEvent(response, type, "double_click")) {
                     logger.debug("Processing double click event");
                     eventPublisher.sendCommand(itemName, OnOffType.ON);
                 }
                 break;
             case "both_click":
-                if (isDualSwitchEvent(jobject, type)) {
+                if (isDualSwitchEvent(response, type)) {
                     logger.debug("Processing both click event");
                     eventPublisher.sendCommand(itemName, OnOffType.ON);
                 }
                 break;
             case "long_click":
-                if (isButtonEvent(jobject, "long_click_press")) {
+                if (isButtonEvent(response, "long_click_press")) {
                     logger.debug("Processing long click event");
                     eventPublisher.sendCommand(itemName, OnOffType.ON);
                 }
                 break;
             case "long_click_release":
-                if (isButtonEvent(jobject, "long_click_release")) {
+                if (isButtonEvent(response, "long_click_release")) {
                     logger.debug("Processing long click release event");
                     eventPublisher.sendCommand(itemName, OnOffType.ON);
                 }
                 break;
             case "switch":
-                if (isWallSwitchEvent(jobject, type)) {
+                if (isWallSwitchEvent(response, type)) {
                     logger.debug("Processing wall switch event");
-                    processWallSwitchEvent(itemName, type, jobject);
+                    processWallSwitchEvent(itemName, type, response);
                 }
                 break;
             case "magnet":
-                if (isMagnetEvent(jobject)) {
+                if (isMagnetEvent(response)) {
                     logger.debug("Processing magnet event");
-                    processMagnetEvent(itemName, jobject);
+                    processMagnetEvent(itemName, response);
                 }
                 break;
             case "motion":
-                if (isMotionEvent(jobject)) {
+                if (isMotionEvent(response)) {
                     logger.debug("Processing motion event");
-                    processMotionEvent(itemName, jobject);
+                    processMotionEvent(itemName, response);
                 }
                 break;
             case "plug":
-                if (isCommonPlugEvent(jobject)) {
+                if (isCommonPlugEvent(response)) {
                     logger.debug("Processing plug event");
-                    processPlugEvent(itemName, jobject);
+                    processPlugEvent(itemName, response);
                 }
                 break;
             case "inuse":
-                if (isPlugEvent(jobject)) {
+                if (isPlugEvent(response)) {
                     logger.debug("Processing plug inuse event");
-                    processPlugInuseEvent(itemName, jobject);
+                    processPlugInuseEvent(itemName, response);
                 }
                 break;
             case "power_consumed":
-                if (isCommonPlugEvent(jobject)) {
+                if (isCommonPlugEvent(response)) {
                     logger.debug("Processing plug power_consumed event");
-                    processPlugPowerConsumedEvent(itemName, jobject);
+                    processPlugPowerConsumedEvent(itemName, response);
                 }
                 break;
             case "load_power":
-                if (isCommonPlugEvent(jobject)) {
+                if (isCommonPlugEvent(response)) {
                     logger.debug("Processing plug load_power event");
-                    processPlugLoadPowerEvent(itemName, jobject);
+                    processPlugLoadPowerEvent(itemName, response);
                 }
                 break;
             case "voltage":
-                if (hasVoltage(jobject)) {
+                if (hasVoltage(response)) {
                     logger.debug("Processing voltage event");
-                    processVoltageEvent(itemName, jobject);
+                    processVoltageEvent(itemName, response);
                 }
                 break;
             case "alarm":
-                if (isAlarmEvent(jobject)) {
+                if (isAlarmEvent(response)) {
                     logger.debug("Processing alarm event");
-                    processAlarmEvent(itemName, jobject);
+                    processAlarmEvent(itemName, response);
                 }
                 break;
             default:
-                if (isCubeEvent(jobject)) {
-                    processCubeEvent(itemName, type, jobject);
+                if (isCubeEvent(response)) {
+                    processCubeEvent(itemName, type, response);
                 }
         }
     }
 
-    private void processWallSwitchEvent(String itemName, String itemType, JsonObject jobject) {
+    private void processWallSwitchEvent(String itemName, String itemType, GatewayResponse response) {
         try {
-            String data = jobject.get("data").getAsString();
-            JsonObject jo = parser.parse(data).getAsJsonObject();
             String channel = getItemChannel(itemType);
-            if (jo == null || !(jo.has(channel)))
-                return;
-            String value = jo.get(channel).getAsString().toLowerCase();
+            GatewayDataResponse data = gson.fromJson(response.getData(), GatewayDataResponse.class);
+            String value = data.getChannel(channel).toLowerCase();
             State oldValue = itemRegistry.getItem(itemName).getState();
             State newValue = value.equals("on") ? OnOffType.ON : OnOffType.OFF;
             if (!newValue.equals(oldValue))
@@ -412,13 +412,10 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
         }
     }
 
-    private void processLightSwitchEvent(String itemName, JsonObject jobject) {
+    private void processLightSwitchEvent(String itemName, GatewayResponse response) {
         try {
-            String data = jobject.get("data").getAsString();
-            JsonObject jo = parser.parse(data).getAsJsonObject();
-            if (jo == null || !jo.has("rgb"))
-                return;
-            rgb = jo.get("rgb").getAsLong();
+            GatewayDataResponse data = gson.fromJson(response.getData(), GatewayDataResponse.class);
+            rgb = data.getRgb().longValue();
             State oldValue = itemRegistry.getItem(itemName).getState();
             State newValue = rgb > 0 ? OnOffType.ON : OnOffType.OFF;
 
@@ -429,13 +426,10 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
         }
     }
 
-    private void processColorEvent(String itemName, JsonObject jobject) {
+    private void processColorEvent(String itemName, GatewayResponse response) {
         try {
-            String data = jobject.get("data").getAsString();
-            JsonObject jo = parser.parse(data).getAsJsonObject();
-            if (jo == null || !jo.has("rgb"))
-                return;
-            rgb = jo.get("rgb").getAsLong();
+            GatewayDataResponse data = gson.fromJson(response.getData(), GatewayDataResponse.class);
+            rgb = data.getRgb().longValue();
             State oldValue = itemRegistry.getItem(itemName).getState();
             //HSBType
             long br = rgb / 65536 / 256;
@@ -449,13 +443,10 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
         }
     }
 
-    private void processBrightnessEvent(String itemName, JsonObject jobject) {
+    private void processBrightnessEvent(String itemName, GatewayResponse response) {
         try {
-            String data = jobject.get("data").getAsString();
-            JsonObject jo = parser.parse(data).getAsJsonObject();
-            if (jo == null || !jo.has("rgb"))
-                return;
-            rgb = jo.get("rgb").getAsLong();
+            GatewayDataResponse data = gson.fromJson(response.getData(), GatewayDataResponse.class);
+            rgb = data.getRgb().longValue();
             State oldValue = itemRegistry.getItem(itemName).getState();
             //HSBType
             int brightness = (int) (rgb / 65536 / 256);
@@ -468,13 +459,10 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
         }
     }
 
-    private void processIlluminationEvent(String itemName, JsonObject jobject) {
+    private void processIlluminationEvent(String itemName, GatewayResponse response) {
         try {
-            String data = jobject.get("data").getAsString();
-            JsonObject jo = parser.parse(data).getAsJsonObject();
-            if (jo == null || !jo.has("illumination"))
-                return;
-            illumination = jo.get("illumination").getAsInt();
+            GatewayDataResponse data = gson.fromJson(response.getData(), GatewayDataResponse.class);
+            illumination = data.getIllumination().intValue();
             State oldValue = itemRegistry.getItem(itemName).getState();
             State newValue = new DecimalType(illumination);
             if (!newValue.equals(oldValue))
@@ -484,8 +472,8 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
         }
     }
 
-    private void processCubeEvent(String itemName, String type, JsonObject jobject) {
-        String event = getStatusEvent(jobject);
+    private void processCubeEvent(String itemName, String type, GatewayResponse response) {
+        String event = getStatusEvent(response);
 
         if (event == null) {
             //it has no event data, maybe voltage only?
@@ -493,8 +481,8 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
         }
 
         boolean publish = false;
-        if (isRotateCubeEvent(jobject)) {
-            event = isLeftRotate(jobject) ? "rotate_left" : "rotate_right";
+        if (isRotateCubeEvent(response)) {
+            event = isLeftRotate(response) ? "rotate_left" : "rotate_right";
         }
         logger.debug("XiaomiGateway: processing cube event {}", event);
         switch (event) {
@@ -536,105 +524,101 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
             eventPublisher.sendCommand(itemName, OnOffType.ON);
     }
 
-    private boolean isLeftRotate(JsonObject jobject) {
+    private boolean isLeftRotate(GatewayResponse response) {
         try {
-            String data = jobject.get("data").getAsString();
-            JsonObject jo = parser.parse(data).getAsJsonObject();
-            return jobject.get("model").getAsString().equals("cube") && jo != null && jo.get("rotate") != null && jo.get("rotate").getAsString().startsWith("-");
+            GatewayDataResponse data = gson.fromJson(response.getData(), GatewayDataResponse.class);
+            return response.getModel().equals("cube") && data.getRotate() != null && data.getRotate().startsWith("-");
         } catch (Exception ex) {
             logger.error(ex.toString());
             return false;
         }
     }
 
-    private boolean isRotateCubeEvent(JsonObject jobject) {
+    private boolean isRotateCubeEvent(GatewayResponse response) {
         try {
-            String data = jobject.get("data").getAsString();
-            JsonObject jo = parser.parse(data).getAsJsonObject();
-            return jobject.get("model").getAsString().equals("cube") && jo != null && jo.get("rotate") != null;
+            GatewayDataResponse data = gson.fromJson(response.getData(), GatewayDataResponse.class);
+            return response.getModel().equals("cube") && data.getRotate() != null;
         } catch (Exception ex) {
             logger.error(ex.toString());
             return false;
         }
     }
 
-    private String getStatusEvent(JsonObject jobject) {
+    private String getStatusEvent(GatewayResponse response) {
         try {
-            String data = jobject.get("data").getAsString();
-            JsonObject jo = parser.parse(data).getAsJsonObject();
-            if (jo == null || !jo.has("status"))
-                return null;
-            return jo.get("status").getAsString();
+            GatewayDataResponse data = gson.fromJson(response.getData(), GatewayDataResponse.class);
+            return data.getStatus();
         } catch (Exception ex) {
             logger.error(ex.toString());
             return null;
         }
     }
 
-    private boolean checkModel(JsonObject jobject, String model) {
-        return jobject != null && jobject.has("model") && jobject.get("model").getAsString().equals(model);
+    private boolean checkModel(GatewayResponse response, String model) {
+        return response.getModel().equals(model);
     }
 
-    private boolean isCubeEvent(JsonObject jobject) {
-        return checkModel(jobject, "cube");
+    private boolean isCubeEvent(GatewayResponse response) {
+        return checkModel(response, "cube");
     }
 
-    private boolean isMotionEvent(JsonObject jobject) {
-        return checkModel(jobject, "motion");
+    private boolean isMotionEvent(GatewayResponse response) {
+        return checkModel(response, "motion");
     }
 
-    private boolean isPlugEvent(JsonObject jobject) {
-        return checkModel(jobject, "plug");
+    private boolean isPlugEvent(GatewayResponse response) {
+        return checkModel(response, "plug");
     }
 
-    private boolean isCommonPlugEvent(JsonObject jobject) {
-        return checkModel(jobject, "plug") || checkModel(jobject, "86plug");
+    private boolean isCommonPlugEvent(GatewayResponse response) {
+        return checkModel(response, "plug") || checkModel(response, "86plug");
     }
 
-    private boolean isAlarmEvent(JsonObject jobject) {
-        return checkModel(jobject, "smoke") || checkModel(jobject, "natgas");
+    private boolean isAlarmEvent(GatewayResponse response) {
+        return checkModel(response, "smoke") || checkModel(response, "natgas");
     }
 
-    private boolean hasVoltage(JsonObject jobject) {
-        if (jobject != null && jobject.has("data")) {
-            String data = jobject.get("data").getAsString();
-            JsonObject jo = parser.parse(data).getAsJsonObject();
-            if (jo.has("voltage")) {
+    private boolean hasVoltage(GatewayResponse response) {
+        if (response.getData() != null) {
+            /*
+            String data = response.getData();
+            JsonObject jo = parser.parse(data).getAsJsonObject();*/
+            GatewayDataResponse data = gson.fromJson(response.getData(), GatewayDataResponse.class);
+            if (data.getVoltage() != null) {
                 return true;
             }
         }
         return false;
     }
 
-    private void getGatewayInfo(JsonObject jobject) {
-        sid = jobject.get("sid").getAsString();
-        dest_port = jobject.get("port").getAsInt();
-        gatewayIP = jobject.get("ip").getAsString();
-        logger.info("Discovered Xiaomi Gateway - sid: {} ip: {} port: {}", sid, gatewayIP ,dest_port);
+    private void getGatewayInfo(GatewayResponse response) {
+        sid = response.getSid();
+        dest_port = Integer.parseInt(response.getPort());
+        gatewayIP = response.getIp();
+        logger.info("Discovered Xiaomi Gateway - sid: {} ip: {} port: {}", sid, gatewayIP, dest_port);
     }
 
-    private void listIds(JsonObject jobject) {
-        String data = jobject.get("data").getAsString();
+    private void listIds(GatewayResponse response) {
+        String data = response.getData();
         JsonArray ja = parser.parse(data).getAsJsonArray();
-        if (devicesList.size() == 0)
-            logger.info("Discovered total of {} Xiaomi smart devices", ja.size());
+        if (devicesList.size() <= 1)
+            logger.info("Discovered total of {} Xiaomi smart subdevices", ja.size());
         requestRead(sid);
         for (JsonElement je : ja) {
             requestRead(je.getAsString());
         }
     }
 
-    private void listDevice(JsonObject jobject) {
-        String newId = jobject.get("sid").getAsString();
-        String model = jobject.get("model").getAsString();
+    private void listDevice(GatewayResponse response) {
+        String newId = response.getSid();
+        String model = response.getModel();
         addDevice(newId, model);
-        processOtherCommands(jobject);
+        processOtherCommands(response);
     }
 
-    private void processMotionEvent(String itemName, JsonObject jobject) {
-        String data = jobject.get("data").getAsString();
-        JsonObject jo = parser.parse(data).getAsJsonObject();
-        String stat = (jo.has("status")) ? jo.get("status").getAsString().toLowerCase() : "no_motion";
+    private void processMotionEvent(String itemName, GatewayResponse response) {
+        GatewayDataResponse data = gson.fromJson(response.getData(), GatewayDataResponse.class);
+        String stat = data.getStatus() != null ? data.getStatus().toLowerCase() : "no_motion";
         State oldValue;
         try {
             oldValue = itemRegistry.getItem(itemName).getState();
@@ -646,10 +630,9 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
         }
     }
 
-    private void processVoltageEvent(String itemName, JsonObject jobject) {
-        String data = jobject.get("data").getAsString();
-        JsonObject jo = parser.parse(data).getAsJsonObject();
-        State newValue = (jo.has("voltage")) ? new DecimalType(jo.get("voltage").getAsInt()) : new DecimalType(0);
+    private void processVoltageEvent(String itemName, GatewayResponse response) {
+        GatewayDataResponse data = gson.fromJson(response.getData(), GatewayDataResponse.class);
+        State newValue = data.getVoltage() != null ? new DecimalType(data.getVoltage().intValue()) : new DecimalType(0);
         try {
             State oldValue = itemRegistry.getItem(itemName).getState();
             if (!newValue.equals(oldValue))
@@ -659,10 +642,9 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
         }
     }
 
-    private void processPlugEvent(String itemName, JsonObject jobject) {
-        String data = jobject.get("data").getAsString();
-        JsonObject jo = parser.parse(data).getAsJsonObject();
-        String stat = (jo.has("status")) ? jo.get("status").getAsString().toLowerCase() : "off";
+    private void processPlugEvent(String itemName, GatewayResponse response) {
+        GatewayDataResponse data = gson.fromJson(response.getData(), GatewayDataResponse.class);
+        String stat = data.getStatus() != null ? data.getStatus().toLowerCase() : "off";
         State oldValue;
         try {
             oldValue = itemRegistry.getItem(itemName).getState();
@@ -674,10 +656,9 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
         }
     }
 
-    private void processAlarmEvent(String itemName, JsonObject jobject) {
-        String data = jobject.get("data").getAsString();
-        JsonObject jo = parser.parse(data).getAsJsonObject();
-        String stat = (jo.has("status")) ? jo.get("status").getAsString().toLowerCase() : "0";
+    private void processAlarmEvent(String itemName, GatewayResponse response) {
+        GatewayDataResponse data = gson.fromJson(response.getData(), GatewayDataResponse.class);
+        String stat = data.getStatus() != null ? data.getStatus().toLowerCase() : "0";
         State oldValue;
         try {
             oldValue = itemRegistry.getItem(itemName).getState();
@@ -689,23 +670,22 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
         }
     }
 
-    private void processPlugPowerConsumedEvent(String itemName, JsonObject jobject) {
-        processPlugPowerEvent(itemName, jobject, "power_consumed");
+    private void processPlugPowerConsumedEvent(String itemName, GatewayResponse response) {
+        processPlugPowerEvent(itemName, response, "power_consumed");
     }
 
-    private void processPlugLoadPowerEvent(String itemName, JsonObject jobject) {
-        processPlugPowerEvent(itemName, jobject, "load_power");
+    private void processPlugLoadPowerEvent(String itemName, GatewayResponse response) {
+        processPlugPowerEvent(itemName, response, "load_power");
     }
 
-    private void processPlugPowerEvent(String itemName, JsonObject jobject, String event) {
-        String data = jobject.get("data").getAsString();
-        JsonObject jo = parser.parse(data).getAsJsonObject();
+    private void processPlugPowerEvent(String itemName, GatewayResponse response, String event) {
         State newValue;
         State oldValue;
-        if (jo.has(event)) {
-            newValue = new DecimalType(jo.get(event).getAsDouble());
+        GatewayDataResponse data = gson.fromJson(response.getData(), GatewayDataResponse.class);
+        if (data.getPlugPowerValue(event) != null) {
+            newValue = new DecimalType(Double.parseDouble(data.getPlugPowerValue(event)));
         } else {
-            if (jo.has("status") && jo.get("status").getAsString().toLowerCase().equals("off") && event.equals("load_power")) {
+            if (data.getStatus() != null && data.getStatus().toLowerCase().equals("off") && event.equals("load_power")) {
                 //if status is off then power consumption is 0
                 newValue = new DecimalType(0);
             } else
@@ -721,14 +701,13 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
 
     }
 
-    private void processPlugInuseEvent(String itemName, JsonObject jobject) {
-        String data = jobject.get("data").getAsString();
-        JsonObject jo = parser.parse(data).getAsJsonObject();
+    private void processPlugInuseEvent(String itemName, GatewayResponse response) {
+        GatewayDataResponse data = gson.fromJson(response.getData(), GatewayDataResponse.class);
         State newValue;
-        if (jo.has("inuse")) {
-            newValue = (jo.get("inuse").getAsString().equals("1")) ? OnOffType.ON : OnOffType.OFF;
+        if (data.getInuse() != null) {
+            newValue = data.getInuse().equals("1") ? OnOffType.ON : OnOffType.OFF;
         } else {
-            if (jo.has("status") && jo.get("status").getAsString().toLowerCase().equals("off")) {
+            if (data.getStatus() != null && data.getStatus().toLowerCase().equals("off")) {
                 //If power is off, in use is off too
                 newValue = OnOffType.OFF;
             } else
@@ -757,10 +736,9 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
         eventPublisher.sendCommand(itemName, command);
     }
 
-    private void processMagnetEvent(String itemName, JsonObject jobject) {
-        String data = jobject.get("data").getAsString();
-        JsonObject jo = parser.parse(data).getAsJsonObject();
-        String stat = jo.get("status").getAsString().toLowerCase();
+    private void processMagnetEvent(String itemName, GatewayResponse response) {
+        GatewayDataResponse data = gson.fromJson(response.getData(), GatewayDataResponse.class);
+        String stat = data.getStatus().toLowerCase();
         State oldValue;
         try {
             oldValue = itemRegistry.getItem(itemName).getState();
@@ -772,22 +750,21 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
         }
     }
 
-    private void processTemperatureEvent(String itemName, JsonObject jobject) {
-        processSensorHTPEvent(itemName, jobject, "temperature");
+    private void processTemperatureEvent(String itemName, GatewayResponse response) {
+        processSensorHTPEvent(itemName, response, "temperature");
     }
 
-    private void processHumidityEvent(String itemName, JsonObject jobject) {
-        processSensorHTPEvent(itemName, jobject, "humidity");
+    private void processHumidityEvent(String itemName, GatewayResponse response) {
+        processSensorHTPEvent(itemName, response, "humidity");
     }
 
-    private void processPressureEvent(String itemName, JsonObject jobject) {
-        processSensorHTPEvent(itemName, jobject, "pressure");
+    private void processPressureEvent(String itemName, GatewayResponse response) {
+        processSensorHTPEvent(itemName, response, "pressure");
     }
 
-    private void processSensorHTPEvent(String itemName, JsonObject jobject, String sensor) {
-        String data = jobject.get("data").getAsString();
-        JsonObject jo = parser.parse(data).getAsJsonObject();
-        Float val = formatValue(jo.get(sensor).getAsString());
+    private void processSensorHTPEvent(String itemName, GatewayResponse response, String sensor) {
+        GatewayDataResponse data = gson.fromJson(response.getData(), GatewayDataResponse.class);
+        Float val = formatValue(data.getHTPSensorValue(sensor));
         try {
             State oldValue = itemRegistry.getItem(itemName).getState();
             State newValue = new DecimalType(val);
@@ -798,88 +775,81 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
         }
     }
 
-    private boolean isMagnetEvent(JsonObject jobject) {
-        return checkModel(jobject, "magnet") || checkModel(jobject, "sensor_magnet.aq2");
+    private boolean isMagnetEvent(GatewayResponse response) {
+        return checkModel(response, "magnet") || checkModel(response, "sensor_magnet.aq2");
     }
 
-    private boolean isGatewayEvent(JsonObject jobject) {
-        return checkModel(jobject, "gateway");
+    private boolean isGatewayEvent(GatewayResponse response) {
+        return checkModel(response, "gateway");
     }
 
-    private boolean isButtonEvent(JsonObject jobject, String click) {
+    private boolean isButtonEvent(GatewayResponse response, String click) {
         try {
-            String data = jobject.get("data").getAsString();
-            JsonObject jo = parser.parse(data).getAsJsonObject();
-            return checkModel(jobject, "switch") && jo != null && jo.has("status") && jo.get("status").getAsString().equals(click);
+            GatewayDataResponse data = gson.fromJson(response.getData(), GatewayDataResponse.class);
+            return checkModel(response, "switch") && data.getStatus() != null && data.getStatus().equals(click);
         } catch (Exception ex) {
             logger.error(ex.toString());
             return false;
         }
     }
 
-    private boolean isSwitchEvent(JsonObject jobject, String itemType, String click) {
+    private boolean isSwitchEvent(GatewayResponse response, String itemType, String click) {
         try {
-            String data = jobject.get("data").getAsString();
-            JsonObject jo = parser.parse(data).getAsJsonObject();
+            GatewayDataResponse data = gson.fromJson(response.getData(), GatewayDataResponse.class);
             String channel = getItemChannel(itemType);
-            return (checkModel(jobject, "86sw1") || checkModel(jobject, "86sw2")) && jo != null && jo.has(channel) && jo.get(channel).getAsString().equals(click);
+            return (checkModel(response, "86sw1") || checkModel(response, "86sw2")) && data.getChannel(channel) != null && data.getChannel(channel).equals(click);
         } catch (Exception ex) {
             logger.error(ex.toString());
             return false;
         }
     }
 
-    private boolean isWallSwitchEvent(JsonObject jobject, String itemType) {
+    private boolean isWallSwitchEvent(GatewayResponse response, String itemType) {
         try {
-            String data = jobject.get("data").getAsString();
-            JsonObject jo = parser.parse(data).getAsJsonObject();
+            GatewayDataResponse data = gson.fromJson(response.getData(), GatewayDataResponse.class);
             String channel = getItemChannel(itemType);
-            return (checkModel(jobject, "ctrl_ln1") || checkModel(jobject, "ctrl_ln2")) && jo != null && jo.has(channel);
+            return (checkModel(response, "ctrl_ln1") || checkModel(response, "ctrl_ln2")) && data.getChannel(channel) != null;
         } catch (Exception ex) {
             logger.error(ex.toString());
             return false;
         }
     }
 
-    private boolean isDualSwitchEvent(JsonObject jobject, String itemType) {
+    private boolean isDualSwitchEvent(GatewayResponse response, String itemType) {
         try {
-            String data = jobject.get("data").getAsString();
-            JsonObject jo = parser.parse(data).getAsJsonObject();
+            GatewayDataResponse data = gson.fromJson(response.getData(), GatewayDataResponse.class);
             String channel = getItemChannel(itemType);
-            return checkModel(jobject, "86sw2") && channel.equals("dual_channel") && jo != null && jo.has(channel) && jo.get(channel).getAsString().equals("both_click");
+            return checkModel(response, "86sw2") && channel.equals("dual_channel") && data.getChannel(channel) != null && data.getChannel(channel).equals("both_click");
         } catch (Exception ex) {
             logger.error(ex.toString());
             return false;
         }
     }
 
-    private boolean isTemperatureEvent(JsonObject jobject) {
+    private boolean isTemperatureEvent(GatewayResponse response) {
         try {
-            String data = jobject.get("data").getAsString();
-            JsonObject jo = parser.parse(data).getAsJsonObject();
-            return (checkModel(jobject, "sensor_ht") || checkModel(jobject, "weather.v1")) && jo.has("temperature");
+            GatewayDataResponse data = gson.fromJson(response.getData(), GatewayDataResponse.class);
+            return (checkModel(response, "sensor_ht") || checkModel(response, "weather.v1")) && data.getTemperature() != null;
         } catch (Exception ex) {
             logger.error(ex.toString());
             return false;
         }
     }
 
-    private boolean isHumidityEvent(JsonObject jobject) {
+    private boolean isHumidityEvent(GatewayResponse response) {
         try {
-            String data = jobject.get("data").getAsString();
-            JsonObject jo = parser.parse(data).getAsJsonObject();
-            return (checkModel(jobject, "sensor_ht") || checkModel(jobject, "weather.v1")) && jo.has("humidity");
+            GatewayDataResponse data = gson.fromJson(response.getData(), GatewayDataResponse.class);
+            return (checkModel(response, "sensor_ht") || checkModel(response, "weather.v1")) && data.getHumidity() != null;
         } catch (Exception ex) {
             logger.error(ex.toString());
             return false;
         }
     }
 
-    private boolean isPressureEvent(JsonObject jobject) {
+    private boolean isPressureEvent(GatewayResponse response) {
         try {
-            String data = jobject.get("data").getAsString();
-            JsonObject jo = parser.parse(data).getAsJsonObject();
-            return checkModel(jobject, "weather.v1") && jo.has("pressure");
+            GatewayDataResponse data = gson.fromJson(response.getData(), GatewayDataResponse.class);
+            return checkModel(response, "weather.v1") && data.getPressure() != null;
         } catch (Exception ex) {
             logger.error(ex.toString());
             return false;
@@ -962,6 +932,7 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
         }
 
         if (sid.equals("") || token.equals("")) {
+            logger.info("Discovering gateways");
             discoverGateways();
         } else {
             updateDevicesStatus();
