@@ -12,6 +12,9 @@ public class GatewayDataResponse {
     private String humidity;
     private String pressure;
 
+    //Smoke sensor
+    private String density;
+
     //Gateway
     private String ip;
     private Number rgb;
@@ -133,4 +136,7 @@ public class GatewayDataResponse {
         return rotate;
     }
 
+    public String getDensity() {
+        return density;
+    }
 }

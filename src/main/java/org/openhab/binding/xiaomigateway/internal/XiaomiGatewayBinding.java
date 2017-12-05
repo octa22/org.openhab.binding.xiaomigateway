@@ -166,11 +166,7 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
             logger.error(e.toString());
         }
 
-        thread = new Thread(new Runnable() {
-            public void run() {
-                receiveData(socket, dgram);
-            }
-        });
+        thread = new Thread(() -> receiveData(socket, dgram));
         thread.start();
     }
 
@@ -391,6 +387,12 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
                     processAlarmEvent(itemName, response);
                 }
                 break;
+            case "density":
+                if(isSmokeEvent(response)) {
+                    logger.debug("Processing smoke event");
+                    processDensityEvent(itemName, response);
+                }
+                break;
             default:
                 if (isCubeEvent(response)) {
                     processCubeEvent(itemName, type, response);
@@ -578,6 +580,10 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
         return checkModel(response, "smoke") || checkModel(response, "natgas");
     }
 
+    private boolean isSmokeEvent(GatewayResponse response) {
+        return checkModel(response, "smoke");
+    }
+
     private boolean hasVoltage(GatewayResponse response) {
         if (response.getData() != null) {
             /*
@@ -663,6 +669,23 @@ public class XiaomiGatewayBinding extends AbstractActiveBinding<XiaomiGatewayBin
         try {
             oldValue = itemRegistry.getItem(itemName).getState();
             State newValue = new DecimalType(Integer.parseInt(stat));
+            if (!newValue.equals(oldValue))
+                eventPublisher.postUpdate(itemName, newValue);
+        } catch (ItemNotFoundException e) {
+            logger.error(e.toString());
+        }
+    }
+
+    private void processDensityEvent(String itemName, GatewayResponse response) {
+        GatewayDataResponse data = gson.fromJson(response.getData(), GatewayDataResponse.class);
+        String density = data.getDensity();
+        if(density == null ) {
+            return;
+        }
+        State oldValue;
+        try {
+            oldValue = itemRegistry.getItem(itemName).getState();
+            State newValue = new DecimalType(Integer.parseInt(density));
             if (!newValue.equals(oldValue))
                 eventPublisher.postUpdate(itemName, newValue);
         } catch (ItemNotFoundException e) {
