@@ -1,3 +1,5 @@
+# please move to OH2 MiHome binding, this binding is obsolete and no longer maintained
+
 # org.openhab.binding.xiaomigateway
 
 This binding brings Xiaomi Gateway Smart Home devices (Aqara) integration with OpenHAB1.x
